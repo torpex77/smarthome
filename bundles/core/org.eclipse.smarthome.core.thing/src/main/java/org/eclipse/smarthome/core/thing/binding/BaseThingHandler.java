@@ -1,18 +1,25 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.core.thing.binding;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 
-import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.config.core.validation.ConfigDescriptionValidator;
 import org.eclipse.smarthome.config.core.validation.ConfigValidationException;
@@ -58,6 +65,7 @@ import org.slf4j.LoggerFactory;
  * @author Stefan Bußweiler - Added new thing status handling, refactorings thing/bridge life cycle
  * @author Kai Kreuzer - Refactored isLinked method to not use deprecated functions anymore
  */
+@NonNullByDefault
 public abstract class BaseThingHandler implements ThingHandler {
 
     private static final String THING_HANDLER_THREADPOOL_NAME = "thingHandler";
@@ -66,25 +74,32 @@ public abstract class BaseThingHandler implements ThingHandler {
     protected final ScheduledExecutorService scheduler = ThreadPoolManager
             .getScheduledPool(THING_HANDLER_THREADPOOL_NAME);
 
+    @NonNullByDefault({})
     protected ThingRegistry thingRegistry;
+    @NonNullByDefault({})
     protected ItemChannelLinkRegistry linkRegistry;
+
+    @Deprecated // this must not be used by bindings!
+    @NonNullByDefault({})
     protected BundleContext bundleContext;
 
-    protected @NonNull Thing thing;
+    protected Thing thing;
 
     @SuppressWarnings("rawtypes")
+    @NonNullByDefault({})
     private ServiceTracker thingRegistryServiceTracker;
     @SuppressWarnings("rawtypes")
+    @NonNullByDefault({})
     private ServiceTracker linkRegistryServiceTracker;
 
-    private ThingHandlerCallback callback;
+    private @Nullable ThingHandlerCallback callback;
 
     /**
      * Creates a new instance of this class for the {@link Thing}.
      *
      * @param thing the thing that should be handled, not null
      */
-    public BaseThingHandler(@NonNull Thing thing) {
+    public BaseThingHandler(Thing thing) {
         this.thing = thing;
     }
 
@@ -93,13 +108,13 @@ public abstract class BaseThingHandler implements ThingHandler {
         this.bundleContext = bundleContext;
         thingRegistryServiceTracker = new ServiceTracker(this.bundleContext, ThingRegistry.class.getName(), null) {
             @Override
-            public Object addingService(final ServiceReference reference) {
+            public Object addingService(final @Nullable ServiceReference reference) {
                 thingRegistry = (ThingRegistry) bundleContext.getService(reference);
                 return thingRegistry;
             }
 
             @Override
-            public void removedService(final ServiceReference reference, final Object service) {
+            public void removedService(final @Nullable ServiceReference reference, final @Nullable Object service) {
                 synchronized (BaseThingHandler.this) {
                     thingRegistry = null;
                 }
@@ -109,13 +124,13 @@ public abstract class BaseThingHandler implements ThingHandler {
         linkRegistryServiceTracker = new ServiceTracker(this.bundleContext, ItemChannelLinkRegistry.class.getName(),
                 null) {
             @Override
-            public Object addingService(final ServiceReference reference) {
+            public Object addingService(final @Nullable ServiceReference reference) {
                 linkRegistry = (ItemChannelLinkRegistry) bundleContext.getService(reference);
                 return linkRegistry;
             }
 
             @Override
-            public void removedService(final ServiceReference reference, final Object service) {
+            public void removedService(final @Nullable ServiceReference reference, final @Nullable Object service) {
                 synchronized (BaseThingHandler.this) {
                     linkRegistry = null;
                 }
@@ -138,12 +153,17 @@ public abstract class BaseThingHandler implements ThingHandler {
 
     @Override
     public void handleConfigurationUpdate(Map<String, Object> configurationParameters) {
+
+        if (!isModifyingCurrentConfig(configurationParameters)) {
+            return;
+        }
+
         validateConfigurationParameters(configurationParameters);
 
         // can be overridden by subclasses
         Configuration configuration = editConfiguration();
-        for (Entry<String, Object> configurationParmeter : configurationParameters.entrySet()) {
-            configuration.put(configurationParmeter.getKey(), configurationParmeter.getValue());
+        for (Entry<String, Object> configurationParameter : configurationParameters.entrySet()) {
+            configuration.put(configurationParameter.getKey(), configurationParameter.getValue());
         }
 
         if (isInitialized()) {
@@ -158,13 +178,31 @@ public abstract class BaseThingHandler implements ThingHandler {
         }
     }
 
+    /**
+     * Checks whether a given list of parameters would mean any change to the existing Thing configuration if applied to
+     * it.
+     * Note that the passed parameters might be a subset of the existing configuration.
+     *
+     * @param configurationParameters the parameters to check against the current configuration
+     * @return true if the parameters would result in a modified configuration, false otherwise
+     */
+    protected boolean isModifyingCurrentConfig(Map<String, Object> configurationParameters) {
+        Configuration currentConfig = getConfig();
+        for (Entry<String, Object> entry : configurationParameters.entrySet()) {
+            if (!Objects.equals(currentConfig.get(entry.getKey()), entry.getValue())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public void dispose() {
         // can be overridden by subclasses
     }
 
     @Override
-    public @NonNull Thing getThing() {
+    public Thing getThing() {
         return this.thing;
     }
 
@@ -191,7 +229,7 @@ public abstract class BaseThingHandler implements ThingHandler {
     }
 
     @Override
-    public void setCallback(ThingHandlerCallback thingHandlerCallback) {
+    public void setCallback(@Nullable ThingHandlerCallback thingHandlerCallback) {
         synchronized (this) {
             this.callback = thingHandlerCallback;
         }
@@ -270,7 +308,7 @@ public abstract class BaseThingHandler implements ThingHandler {
     /**
      *
      * Updates the state of the thing. Will use the thing UID to infer the
-     * unique channel UID.
+     * unique channel UID from the given ID.
      *
      * @param channel
      *            ID id of the channel, which was updated
@@ -302,13 +340,13 @@ public abstract class BaseThingHandler implements ThingHandler {
 
     /**
      * Emits an event for the given channel. Will use the thing UID to infer the
-     * unique channel UID.
+     * unique channel UID from the given ID.
      *
-     * @param channelUID UID of the channel over which the event will be emitted
+     * @param channelID ID of the channel over which the event will be emitted
      * @param event Event to emit
      */
-    protected void triggerChannel(String channelUID, String event) {
-        triggerChannel(new ChannelUID(this.getThing().getUID(), channelUID), event);
+    protected void triggerChannel(String channelID, String event) {
+        triggerChannel(new ChannelUID(this.getThing().getUID(), channelID), event);
     }
 
     /**
@@ -376,7 +414,7 @@ public abstract class BaseThingHandler implements ThingHandler {
      * @throws IllegalStateException
      *             if handler is not initialized correctly, because no callback is present
      */
-    protected void updateStatus(ThingStatus status, ThingStatusDetail statusDetail, String description) {
+    protected void updateStatus(ThingStatus status, ThingStatusDetail statusDetail, @Nullable String description) {
         synchronized (this) {
             if (this.callback != null) {
                 ThingStatusInfoBuilder statusBuilder = ThingStatusInfoBuilder.create(status, statusDetail);
@@ -436,7 +474,7 @@ public abstract class BaseThingHandler implements ThingHandler {
      * @throws IllegalStateException
      *             if handler is not initialized correctly, because no callback is present
      */
-    protected void updateThing(@NonNull Thing thing) {
+    protected void updateThing(Thing thing) {
         synchronized (this) {
             if (this.callback != null) {
                 this.thing = thing;
@@ -530,7 +568,7 @@ public abstract class BaseThingHandler implements ThingHandler {
      * @param name the name of the property to be set
      * @param value the value of the property
      */
-    protected void updateProperty(@NonNull String name, String value) {
+    protected void updateProperty(String name, String value) {
         String existingPropertyValue = thing.getProperties().get(name);
         if (existingPropertyValue == null || !existingPropertyValue.equals(value)) {
             thing.setProperty(name, value);
@@ -543,7 +581,7 @@ public abstract class BaseThingHandler implements ThingHandler {
      * @return returns the bridge of the thing or null if the thing has no
      *         bridge
      */
-    protected Bridge getBridge() {
+    protected @Nullable Bridge getBridge() {
         ThingUID bridgeUID = thing.getBridgeUID();
         synchronized (this) {
             if (bridgeUID != null && thingRegistry != null) {

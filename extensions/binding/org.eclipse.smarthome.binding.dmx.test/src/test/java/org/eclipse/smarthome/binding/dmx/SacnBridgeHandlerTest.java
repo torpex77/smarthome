@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.dmx;
 
@@ -17,7 +22,7 @@ import java.util.Map;
 
 import org.eclipse.smarthome.binding.dmx.handler.SacnBridgeHandler;
 import org.eclipse.smarthome.binding.dmx.internal.DmxBridgeHandler;
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.BaseChannel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.BaseDmxChannel;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ManagedThingProvider;
@@ -118,8 +123,8 @@ public class SacnBridgeHandlerTest extends JavaOSGiTest {
         managedThingProvider.add(thing);
         DmxBridgeHandler bridgeHandler = (DmxBridgeHandler) bridge.getHandler();
 
-        BaseChannel channel = new BaseChannel(TEST_UNIVERSE, TEST_CHANNEL);
-        BaseChannel returnedChannel = bridgeHandler.getDmxChannel(channel, thing);
+        BaseDmxChannel channel = new BaseDmxChannel(TEST_UNIVERSE, TEST_CHANNEL);
+        BaseDmxChannel returnedChannel = bridgeHandler.getDmxChannel(channel, thing);
 
         Integer channelId = returnedChannel.getChannelId();
         assertThat(channelId, is(TEST_CHANNEL));

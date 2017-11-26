@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.ui.internal.chart;
 
@@ -18,6 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageOutputStream;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -66,6 +72,7 @@ public class ChartServlet extends HttpServlet {
     private int defaultHeight = CHART_HEIGHT;
     private int defaultWidth = CHART_WIDTH;
     private double scale = 1.0;
+    private int maxWidth = -1;
 
     // The URI of this servlet
     public static final String SERVLET_NAME = "/chart";
@@ -177,6 +184,12 @@ public class ChartServlet extends HttpServlet {
                 scale = 1.0;
             }
         }
+
+        final String maxWidthString = Objects.toString(config.get("maxWidth"), null);
+        if (maxWidthString != null) {
+            maxWidth = Integer.parseInt(maxWidthString);
+        }
+
     }
 
     @Override
@@ -272,16 +285,36 @@ public class ChartServlet extends HttpServlet {
             legend = BooleanUtils.toBoolean(req.getParameter("legend"));
         }
 
+        if (maxWidth > 0 && width > maxWidth) {
+            height = Math.round((float) height / (float) width * maxWidth);
+            if (dpi != null) {
+                dpi = Math.round((float) dpi / (float) width * maxWidth);
+            }
+            width = maxWidth;
+        }
+
         // Set the content type to that provided by the chart provider
         res.setContentType("image/" + provider.getChartType());
-        try {
+        logger.debug("chart building with width {} height {} dpi {}", width, height, dpi);
+        try (ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(res.getOutputStream())) {
             BufferedImage chart = provider.createChart(serviceName, req.getParameter("theme"), timeBegin, timeEnd,
                     height, width, req.getParameter("items"), req.getParameter("groups"), dpi, legend);
-            ImageIO.write(chart, provider.getChartType().toString(), res.getOutputStream());
+            ImageIO.write(chart, provider.getChartType().toString(), imageOutputStream);
+            logger.debug("Chart successfully generated and written to the response.");
         } catch (ItemNotFoundException e) {
             logger.debug("{}", e.getMessage());
+            res.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         } catch (IllegalArgumentException e) {
             logger.warn("Illegal argument in chart: {}", e.getMessage());
+            res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Illegal argument in chart: " + e.getMessage());
+        } catch (RuntimeException e) {
+            if (logger.isDebugEnabled()) {
+                // we also attach the stack trace
+                logger.warn("Chart generation failed: {}", e.getMessage(), e);
+            } else {
+                logger.warn("Chart generation failed: {}", e.getMessage());
+            }
+            res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 

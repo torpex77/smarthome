@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.model.item.tests;
 
@@ -13,6 +18,7 @@ import static org.junit.Assert.*;
 import java.io.ByteArrayInputStream;
 import java.util.Iterator;
 
+import org.eclipse.smarthome.core.items.GenericItem;
 import org.eclipse.smarthome.core.items.GroupItem;
 import org.eclipse.smarthome.core.items.Item;
 import org.eclipse.smarthome.core.items.ItemRegistry;
@@ -120,6 +126,28 @@ public class GenericItemProvider2Test extends JavaOSGiTest {
                 assertEquals("Number Seven", item.getLabel());
             }
         }
+    }
+
+    @Test
+    public void testGroupAssignmentsAreConsidered() {
+        assertThat(itemRegistry.getAll().size(), is(0));
+
+        String model = "Group testGroup " + //
+                "Number number1 (testGroup) " + //
+                "Number number2 ";
+
+        modelRepository.addOrRefreshModel(TESTMODEL_NAME, new ByteArrayInputStream(model.getBytes()));
+
+        model = "Group testGroup " + //
+                "Number number1 (testGroup) " + //
+                "Number number2 (testGroup)";
+
+        modelRepository.addOrRefreshModel(TESTMODEL_NAME, new ByteArrayInputStream(model.getBytes()));
+
+        GenericItem item = (GenericItem) itemRegistry.get("number2");
+        assertTrue(item.getGroupNames().contains("testGroup"));
+        GroupItem groupItem = (GroupItem) itemRegistry.get("testGroup");
+        assertTrue(groupItem.getAllMembers().contains(item));
     }
 
 }

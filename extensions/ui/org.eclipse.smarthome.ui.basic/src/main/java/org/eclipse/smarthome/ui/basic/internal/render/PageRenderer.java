@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.ui.basic.internal.render;
 
@@ -67,6 +72,7 @@ public class PageRenderer extends AbstractWidgetRenderer {
             throws RenderException {
 
         String snippet = getSnippet(async ? "layer" : "main");
+        snippet = snippet.replaceAll("%main.offline-msg%", localizeText("@text/main.offline-msg"));
         snippet = snippet.replaceAll("%id%", id);
 
         // if the label contains a value span, we remove this span as
@@ -200,13 +206,20 @@ public class PageRenderer extends AbstractWidgetRenderer {
 
         StringBuilder sb = new StringBuilder();
         if (sitemapList.isEmpty()) {
-            sb.append(getSnippet("sitemaps_list_empty"));
+            String listEmptySnippet = getSnippet("sitemaps_list_empty");
+            listEmptySnippet = StringUtils.replace(listEmptySnippet, "%sitemaps-list-empty.info%",
+                    localizeText("@text/sitemaps-list-empty.info"));
+            sb.append(listEmptySnippet);
         } else {
             for (String sitemap : sitemapList) {
                 sb.append(StringUtils.replace(sitemapSnippet, "%sitemap%", sitemap));
             }
         }
 
+        listSnippet = StringUtils.replace(listSnippet, "%sitemaps-list.welcome%",
+                localizeText("@text/sitemaps-list.welcome"));
+        listSnippet = StringUtils.replace(listSnippet, "%sitemaps-list.available-sitemaps%",
+                localizeText("@text/sitemaps-list.available-sitemaps"));
         listSnippet = StringUtils.replace(listSnippet, "%items%", sb.toString());
 
         pageSnippet = StringUtils.replace(pageSnippet, "%title%", "BasicUI");

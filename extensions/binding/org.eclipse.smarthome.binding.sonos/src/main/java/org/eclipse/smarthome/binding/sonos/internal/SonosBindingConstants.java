@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.sonos.internal;
 
@@ -29,6 +34,7 @@ public class SonosBindingConstants {
     // List of all Thing Type UIDs
     // Column (:) is not used for PLAY:1, PLAY:3, PLAY:5 and CONNECT:AMP because of
     // ThingTypeUID and device pairing name restrictions
+    public final static ThingTypeUID ONE_THING_TYPE_UID = new ThingTypeUID(BINDING_ID, "One");
     public final static ThingTypeUID PLAY1_THING_TYPE_UID = new ThingTypeUID(BINDING_ID, "PLAY1");
     public final static ThingTypeUID PLAY3_THING_TYPE_UID = new ThingTypeUID(BINDING_ID, "PLAY3");
     public final static ThingTypeUID PLAY5_THING_TYPE_UID = new ThingTypeUID(BINDING_ID, "PLAY5");
@@ -37,9 +43,13 @@ public class SonosBindingConstants {
     public final static ThingTypeUID CONNECTAMP_THING_TYPE_UID = new ThingTypeUID(BINDING_ID, "CONNECTAMP");
     public final static ThingTypeUID ZONEPLAYER_THING_TYPE_UID = new ThingTypeUID(BINDING_ID, "zoneplayer");
 
+    public static final Set<ThingTypeUID> WITH_LINEIN_THING_TYPES_UIDS = Stream
+            .of(PLAY5_THING_TYPE_UID, PLAYBAR_THING_TYPE_UID, CONNECT_THING_TYPE_UID, CONNECTAMP_THING_TYPE_UID)
+            .collect(Collectors.toSet());
+
     public static final Set<ThingTypeUID> SUPPORTED_KNOWN_THING_TYPES_UIDS = Stream
-            .of(PLAY1_THING_TYPE_UID, PLAY3_THING_TYPE_UID, PLAY5_THING_TYPE_UID, PLAYBAR_THING_TYPE_UID,
-                    CONNECT_THING_TYPE_UID, CONNECTAMP_THING_TYPE_UID)
+            .of(ONE_THING_TYPE_UID, PLAY1_THING_TYPE_UID, PLAY3_THING_TYPE_UID, PLAY5_THING_TYPE_UID,
+                    PLAYBAR_THING_TYPE_UID, CONNECT_THING_TYPE_UID, CONNECTAMP_THING_TYPE_UID)
             .collect(Collectors.toSet());
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = new HashSet<ThingTypeUID>(
@@ -92,7 +102,6 @@ public class SonosBindingConstants {
     public final static String STOP = "stop";
     public final static String TUNEINSTATIONID = "tuneinstationid";
     public final static String VOLUME = "volume";
-    public final static String ZONEGROUP = "zonegroup";
     public final static String ZONEGROUPID = "zonegroupid";
     public final static String ZONENAME = "zonename";
     public final static String MODELID = "modelId";

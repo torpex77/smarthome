@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.tradfri.internal;
 
@@ -28,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public class TradfriCoapClient extends CoapClient {
 
     private static final int TIMEOUT = 2000;
-    private static final int DEFAULT_DELAY_MILLIS = 500;
+    private static final int DEFAULT_DELAY_MILLIS = 600;
     private final Logger logger;
     private final LinkedList<PayloadCallbackPair> commandsQueue;
     private final Runnable commandExecutor;
@@ -116,7 +121,6 @@ public class TradfriCoapClient extends CoapClient {
      * @param scheduler scheduler to be used for sending commands
      */
     public void asyncPut(PayloadCallbackPair payloadCallbackPair, ScheduledExecutorService scheduler) {
-        
         synchronized (this.commandsQueue) {
             if (this.commandsQueue.isEmpty()) {
                 this.commandsQueue.offer(payloadCallbackPair);

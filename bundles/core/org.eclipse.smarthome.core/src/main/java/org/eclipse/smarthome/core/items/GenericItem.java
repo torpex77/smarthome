@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.core.items;
 
@@ -285,11 +290,7 @@ abstract public class GenericItem implements ActiveItem {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((category == null) ? 0 : category.hashCode());
-        result = prime * result + ((label == null) ? 0 : label.hashCode());
         result = prime * result + ((name == null) ? 0 : name.hashCode());
-        result = prime * result + ((tags == null) ? 0 : tags.hashCode());
-        result = prime * result + ((type == null) ? 0 : type.hashCode());
         return result;
     }
 
@@ -305,31 +306,11 @@ abstract public class GenericItem implements ActiveItem {
             return false;
         }
         GenericItem other = (GenericItem) obj;
-        if (category == null) {
-            if (other.category != null) {
+        if (name == null) {
+            if (other.name != null) {
                 return false;
             }
-        } else if (!category.equals(other.category)) {
-            return false;
-        }
-        if (label == null) {
-            if (other.label != null) {
-                return false;
-            }
-        } else if (!label.equals(other.label)) {
-            return false;
-        }
-        if (!name.equals(other.name)) {
-            return false;
-        }
-        if (tags == null) {
-            if (other.tags != null) {
-                return false;
-            }
-        } else if (!tags.equals(other.tags)) {
-            return false;
-        }
-        if (!type.equals(other.type)) {
+        } else if (!name.equals(other.name)) {
             return false;
         }
         return true;

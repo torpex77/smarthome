@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.io.rest.sitemap.internal;
 
@@ -300,9 +305,10 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
                             logger.debug("Received HTTP GET request at '{}' for the unknown page id '{}'.", uri,
                                     pageId);
                         } else {
-                            logger.debug("Received HTTP GET request at '{}' for the page id '{}'. "
-                                    + "This id refers to a non-linkable widget and is therefore no valid page id.", uri,
-                                    pageId);
+                            logger.debug(
+                                    "Received HTTP GET request at '{}' for the page id '{}'. "
+                                            + "This id refers to a non-linkable widget and is therefore no valid page id.",
+                                    uri, pageId);
                         }
                     }
                     throw new WebApplicationException(404);
@@ -456,31 +462,21 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
             bean.separator = listWidget.getSeparator();
         }
         if (widget instanceof Image) {
+            bean.url = buildProxyUrl(sitemapName, widget, uri);
             Image imageWidget = (Image) widget;
-            String wId = itemUIRegistry.getWidgetId(widget);
-            if (uri.getPort() < 0 || uri.getPort() == 80) {
-                bean.url = uri.getScheme() + "://" + uri.getHost() + "/proxy?sitemap=" + sitemapName
-                        + ".sitemap&widgetId=" + wId;
-            } else {
-                bean.url = uri.getScheme() + "://" + uri.getHost() + ":" + uri.getPort() + "/proxy?sitemap="
-                        + sitemapName + ".sitemap&widgetId=" + wId;
-            }
             if (imageWidget.getRefresh() > 0) {
                 bean.refresh = imageWidget.getRefresh();
             }
         }
         if (widget instanceof Video) {
             Video videoWidget = (Video) widget;
-            String wId = itemUIRegistry.getWidgetId(widget);
             if (videoWidget.getEncoding() != null) {
                 bean.encoding = videoWidget.getEncoding();
             }
-            if (uri.getPort() < 0 || uri.getPort() == 80) {
-                bean.url = uri.getScheme() + "://" + uri.getHost() + "/proxy?sitemap=" + sitemapName
-                        + ".sitemap&widgetId=" + wId;
+            if (videoWidget.getEncoding() != null && videoWidget.getEncoding().toLowerCase().contains("hls")) {
+                bean.url = videoWidget.getUrl();
             } else {
-                bean.url = uri.getScheme() + "://" + uri.getHost() + ":" + uri.getPort() + "/proxy?sitemap="
-                        + sitemapName + ".sitemap&widgetId=" + wId;
+                bean.url = buildProxyUrl(sitemapName, videoWidget, uri);
             }
         }
         if (widget instanceof Webview) {
@@ -508,6 +504,17 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
             bean.step = setpointWidget.getStep();
         }
         return bean;
+    }
+
+    private String buildProxyUrl(String sitemapName, Widget widget, URI uri) {
+        String wId = itemUIRegistry.getWidgetId(widget);
+        StringBuilder sb = new StringBuilder();
+        sb.append(uri.getScheme()).append("://").append(uri.getHost());
+        if (uri.getPort() >= 0) {
+            sb.append(":").append(uri.getPort());
+        }
+        sb.append("/proxy?sitemap=").append(sitemapName).append(".sitemap&widgetId=").append(wId);
+        return sb.toString();
     }
 
     private boolean isLeaf(EList<Widget> children) {

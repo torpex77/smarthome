@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.core.thing.internal;
 
@@ -12,10 +17,10 @@ import static org.mockito.Mockito.*;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import java.util.Arrays;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.smarthome.core.events.EventPublisher;
-import org.eclipse.smarthome.core.items.Item;
 import org.eclipse.smarthome.core.items.ItemRegistry;
 import org.eclipse.smarthome.core.items.events.ItemEventFactory;
 import org.eclipse.smarthome.core.library.items.SwitchItem;
@@ -29,9 +34,14 @@ import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
 import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
 import org.eclipse.smarthome.core.thing.events.ThingEventFactory;
+import org.eclipse.smarthome.core.thing.internal.profiles.SystemProfileFactory;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLink;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLinkRegistry;
+import org.eclipse.smarthome.core.thing.profiles.ProfileAdvisor;
+import org.eclipse.smarthome.core.thing.profiles.ProfileCallback;
+import org.eclipse.smarthome.core.thing.profiles.ProfileContext;
 import org.eclipse.smarthome.core.thing.profiles.ProfileFactory;
+import org.eclipse.smarthome.core.thing.profiles.ProfileTypeUID;
 import org.eclipse.smarthome.core.thing.profiles.StateProfile;
 import org.eclipse.smarthome.core.thing.profiles.TriggerProfile;
 import org.eclipse.smarthome.core.thing.type.ChannelKind;
@@ -76,6 +86,9 @@ public class CommunicationManagerTest {
     private ProfileFactory mockProfileFactory;
 
     @Mock
+    private ProfileAdvisor mockProfileAdvisor;
+
+    @Mock
     private StateProfile stateProfile;
 
     @Mock
@@ -90,17 +103,33 @@ public class CommunicationManagerTest {
 
         manager = new CommunicationManager();
         manager.setEventPublisher(eventPublisher);
+        manager.setDefaultProfileFactory(new SystemProfileFactory());
 
         doAnswer(invocation -> {
-            switch (((Channel) invocation.getArguments()[2]).getKind()) {
+            switch (((Channel) invocation.getArguments()[0]).getKind()) {
                 case STATE:
-                    return stateProfile;
+                    return new ProfileTypeUID("test:state");
                 case TRIGGER:
+                    return new ProfileTypeUID("test:trigger");
+            }
+            return null;
+        }).when(mockProfileAdvisor).getSuggestedProfileTypeUID(isA(Channel.class), isA(String.class));
+        doAnswer(invocation -> {
+            switch (((ProfileTypeUID) invocation.getArguments()[0]).toString()) {
+                case "test:state":
+                    return stateProfile;
+                case "test:trigger":
                     return triggerProfile;
             }
             return null;
-        }).when(mockProfileFactory).createProfile(isA(ItemChannelLink.class), isA(Item.class), isA(Channel.class));
+        }).when(mockProfileFactory).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
+
+        when(mockProfileFactory.getSupportedProfileTypeUIDs()).thenReturn(Stream
+                .of(new ProfileTypeUID("test:state"), new ProfileTypeUID("test:trigger")).collect(Collectors.toList()));
+
         manager.addProfileFactory(mockProfileFactory);
+        manager.addProfileAdvisor(mockProfileAdvisor);
 
         ItemChannelLinkRegistry iclRegistry = new ItemChannelLinkRegistry() {
             @Override
@@ -123,7 +152,7 @@ public class CommunicationManagerTest {
     @Test
     public void testStateUpdated_singleLink() {
         manager.stateUpdated(STATE_CHANNEL_UID_1, OnOffType.ON);
-        verify(stateProfile).stateUpdated(same(eventPublisher), same(LINK_1_S1), eq(OnOffType.ON), same(ITEM_1));
+        verify(stateProfile).onStateUpdateFromHandler(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -131,8 +160,7 @@ public class CommunicationManagerTest {
     @Test
     public void testStateUpdated_multiLink() {
         manager.stateUpdated(STATE_CHANNEL_UID_2, OnOffType.ON);
-        verify(stateProfile).stateUpdated(same(eventPublisher), same(LINK_1_S2), eq(OnOffType.ON), same(ITEM_1));
-        verify(stateProfile).stateUpdated(same(eventPublisher), same(LINK_2_S2), eq(OnOffType.ON), same(ITEM_2));
+        verify(stateProfile, times(2)).onStateUpdateFromHandler(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -140,7 +168,7 @@ public class CommunicationManagerTest {
     @Test
     public void testPostCommand_singleLink() {
         manager.postCommand(STATE_CHANNEL_UID_1, OnOffType.ON);
-        verify(stateProfile).postCommand(same(eventPublisher), same(LINK_1_S1), eq(OnOffType.ON), same(ITEM_1));
+        verify(stateProfile).onCommandFromHandler(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -148,8 +176,7 @@ public class CommunicationManagerTest {
     @Test
     public void testPostCommand_multiLink() {
         manager.postCommand(STATE_CHANNEL_UID_2, OnOffType.ON);
-        verify(stateProfile).postCommand(same(eventPublisher), same(LINK_1_S2), eq(OnOffType.ON), same(ITEM_1));
-        verify(stateProfile).postCommand(same(eventPublisher), same(LINK_2_S2), eq(OnOffType.ON), same(ITEM_2));
+        verify(stateProfile, times(2)).onCommandFromHandler(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -157,7 +184,7 @@ public class CommunicationManagerTest {
     @Test
     public void testItemCommandEvent_singleLink() {
         manager.receive(ItemEventFactory.createCommandEvent(ITEM_NAME_2, OnOffType.ON));
-        verify(stateProfile).onCommand(same(LINK_2_S2), same(THING), eq(OnOffType.ON));
+        verify(stateProfile).onCommandFromItem(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -165,8 +192,7 @@ public class CommunicationManagerTest {
     @Test
     public void testItemCommandEvent_multiLink() {
         manager.receive(ItemEventFactory.createCommandEvent(ITEM_NAME_1, OnOffType.ON));
-        verify(stateProfile).onCommand(same(LINK_1_S1), same(THING), eq(OnOffType.ON));
-        verify(stateProfile).onCommand(same(LINK_1_S2), same(THING), eq(OnOffType.ON));
+        verify(stateProfile, times(2)).onCommandFromItem(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -175,7 +201,7 @@ public class CommunicationManagerTest {
     public void testItemCommandEvent_notToSource() {
         manager.receive(
                 ItemEventFactory.createCommandEvent(ITEM_NAME_1, OnOffType.ON, STATE_CHANNEL_UID_2.getAsString()));
-        verify(stateProfile).onCommand(same(LINK_1_S1), same(THING), eq(OnOffType.ON));
+        verify(stateProfile).onCommandFromItem(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -183,7 +209,8 @@ public class CommunicationManagerTest {
     @Test
     public void testItemStateEvent_singleLink() {
         manager.receive(ItemEventFactory.createStateEvent(ITEM_NAME_2, OnOffType.ON));
-        verify(stateProfile).onUpdate(same(LINK_2_S2), same(THING), eq(OnOffType.ON));
+        verify(stateProfile).onStateUpdateFromItem(eq(OnOffType.ON));
+        verify(triggerProfile).onStateUpdateFromItem(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -191,8 +218,8 @@ public class CommunicationManagerTest {
     @Test
     public void testItemStateEvent_multiLink() {
         manager.receive(ItemEventFactory.createStateEvent(ITEM_NAME_1, OnOffType.ON));
-        verify(stateProfile).onUpdate(same(LINK_1_S1), same(THING), eq(OnOffType.ON));
-        verify(stateProfile).onUpdate(same(LINK_1_S2), same(THING), eq(OnOffType.ON));
+        verify(stateProfile, times(2)).onStateUpdateFromItem(eq(OnOffType.ON));
+        verify(triggerProfile, times(2)).onStateUpdateFromItem(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -201,7 +228,8 @@ public class CommunicationManagerTest {
     public void testItemStateEvent_notToSource() {
         manager.receive(
                 ItemEventFactory.createStateEvent(ITEM_NAME_1, OnOffType.ON, STATE_CHANNEL_UID_2.getAsString()));
-        verify(stateProfile).onUpdate(same(LINK_1_S1), same(THING), eq(OnOffType.ON));
+        verify(stateProfile).onStateUpdateFromItem(eq(OnOffType.ON));
+        verify(triggerProfile, times(2)).onStateUpdateFromItem(eq(OnOffType.ON));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -209,7 +237,7 @@ public class CommunicationManagerTest {
     @Test
     public void testChannelTriggeredEvent_singleLink() {
         manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_1));
-        verify(triggerProfile).onTrigger(same(eventPublisher), same(LINK_1_T1), eq(EVENT), same(ITEM_1));
+        verify(triggerProfile).onTriggerFromHandler(eq(EVENT));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -217,8 +245,7 @@ public class CommunicationManagerTest {
     @Test
     public void testChannelTriggeredEvent_multiLink() {
         manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
-        verify(triggerProfile).onTrigger(same(eventPublisher), same(LINK_1_T2), eq(EVENT), same(ITEM_1));
-        verify(triggerProfile).onTrigger(same(eventPublisher), same(LINK_2_T2), eq(EVENT), same(ITEM_2));
+        verify(triggerProfile, times(2)).onTriggerFromHandler(eq(EVENT));
         verifyNoMoreInteractions(stateProfile);
         verifyNoMoreInteractions(triggerProfile);
     }
@@ -229,8 +256,12 @@ public class CommunicationManagerTest {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
 
-        verify(mockProfileFactory).createProfile(isA(ItemChannelLink.class), isA(Item.class), isA(Channel.class));
+        verify(mockProfileFactory, times(2)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
+        verify(mockProfileFactory, atLeast(0)).getSupportedProfileTypeUIDs();
+        verify(mockProfileAdvisor, atLeast(0)).getSuggestedProfileTypeUID(any(), any());
         verifyNoMoreInteractions(mockProfileFactory);
+        verifyNoMoreInteractions(mockProfileAdvisor);
     }
 
     @Test
@@ -238,6 +269,8 @@ public class CommunicationManagerTest {
         for (int i = 0; i < 3; i++) {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
+        verify(mockProfileFactory, times(2)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
 
         manager.removeProfileFactory(mockProfileFactory);
         manager.addProfileFactory(mockProfileFactory);
@@ -246,9 +279,12 @@ public class CommunicationManagerTest {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
 
-        verify(mockProfileFactory, times(2)).createProfile(isA(ItemChannelLink.class), isA(Item.class),
-                isA(Channel.class));
+        verify(mockProfileFactory, times(4)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
+        verify(mockProfileFactory, atLeast(0)).getSupportedProfileTypeUIDs();
+        verify(mockProfileAdvisor, atLeast(0)).getSuggestedProfileTypeUID(any(), any());
         verifyNoMoreInteractions(mockProfileFactory);
+        verifyNoMoreInteractions(mockProfileAdvisor);
     }
 
     @Test
@@ -256,6 +292,8 @@ public class CommunicationManagerTest {
         for (int i = 0; i < 3; i++) {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
+        verify(mockProfileFactory, times(2)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
 
         manager.removed(LINK_2_T2);
         manager.added(LINK_2_T2);
@@ -264,9 +302,12 @@ public class CommunicationManagerTest {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
 
-        verify(mockProfileFactory, times(2)).createProfile(isA(ItemChannelLink.class), isA(Item.class),
-                isA(Channel.class));
+        verify(mockProfileFactory, times(3)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
+        verify(mockProfileFactory, atLeast(0)).getSupportedProfileTypeUIDs();
+        verify(mockProfileAdvisor, atLeast(0)).getSuggestedProfileTypeUID(any(), any());
         verifyNoMoreInteractions(mockProfileFactory);
+        verifyNoMoreInteractions(mockProfileAdvisor);
     }
 
     @Test
@@ -282,8 +323,12 @@ public class CommunicationManagerTest {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
 
-        verify(mockProfileFactory).createProfile(isA(ItemChannelLink.class), isA(Item.class), isA(Channel.class));
+        verify(mockProfileFactory, times(2)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
+        verify(mockProfileFactory, atLeast(0)).getSupportedProfileTypeUIDs();
+        verify(mockProfileAdvisor, atLeast(0)).getSuggestedProfileTypeUID(any(), any());
         verifyNoMoreInteractions(mockProfileFactory);
+        verifyNoMoreInteractions(mockProfileAdvisor);
     }
 
     @Test
@@ -291,6 +336,8 @@ public class CommunicationManagerTest {
         for (int i = 0; i < 3; i++) {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
+        verify(mockProfileFactory, times(2)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
 
         manager.updated(LINK_2_T2, LINK_2_T2);
 
@@ -298,9 +345,12 @@ public class CommunicationManagerTest {
             manager.receive(ThingEventFactory.createTriggerEvent(EVENT, TRIGGER_CHANNEL_UID_2));
         }
 
-        verify(mockProfileFactory, times(2)).createProfile(isA(ItemChannelLink.class), isA(Item.class),
-                isA(Channel.class));
+        verify(mockProfileFactory, times(3)).createProfile(isA(ProfileTypeUID.class), isA(ProfileCallback.class),
+                isA(ProfileContext.class));
+        verify(mockProfileFactory, atLeast(0)).getSupportedProfileTypeUIDs();
+        verify(mockProfileAdvisor, atLeast(0)).getSuggestedProfileTypeUID(any(), any());
         verifyNoMoreInteractions(mockProfileFactory);
+        verifyNoMoreInteractions(mockProfileAdvisor);
     }
 
 }

@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.eclipse.smarthome.config.dispatch.test;
 
 import static org.hamcrest.CoreMatchers.*;
@@ -621,7 +633,7 @@ public class ConfigDispatcherOSGiTest extends JavaOSGiTest {
     }
 
     @Test
-    public void theSameLocalAndGlobalPIDsInDifferentFilesAreConsideredOnePID() {
+    public void whenExclusivePIDisDefinedInlineFromDifferentFile_skipTheLine() {
         String configDirectory = configBaseDirectory + SEP + "global_and_local_pid_different_files_conf";
         String servicesDirectory = "global_and_local_pid_no_conflict_services";
         String defaultConfigFilePath = configDirectory + SEP + "global.and.local.pid.default.file.cfg";
@@ -629,8 +641,8 @@ public class ConfigDispatcherOSGiTest extends JavaOSGiTest {
         initialize(configDirectory, servicesDirectory, defaultConfigFilePath);
 
         // Assert that the configuration is updated with all the properties for a pid from all the processed files.
-        verifyValueOfConfigurationProperty("no.conflict.global.and.local.pid", "global.property", "global.value");
-        verifyValueOfConfigurationProperty("no.conflict.global.and.local.pid", "local.property", "local.value");
+        verifyValueOfConfigurationProperty("no.conflict.global.and.local.pid", "exclusive.property", "global.value");
+        verifyNotExistingConfigurationProperty("no.conflict.global.and.local.pid", "inline.property");
     }
 
     @Test

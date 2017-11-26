@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-Activator: org.eclipse.smarthome.ui.basic.internal.WebAppActivato
  r
 Bundle-ClassPath: patch/,.
-Bundle-License: http://www.eclipse.org/legal/epl-v10.html
+Bundle-License: https://www.eclipse.org/legal/epl-2.0/
 Bundle-ManifestVersion: 2
 Bundle-Name: Eclipse SmartHome Basic UI
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
@@ -21,12 +21,14 @@ Import-Package:
  org.eclipse.emf.ecore.resource,
  org.eclipse.jdt.annotation;resolution:=optional,
  org.eclipse.smarthome.core.events,
+ org.eclipse.smarthome.core.i18n,
  org.eclipse.smarthome.core.items,
  org.eclipse.smarthome.core.items.events,
  org.eclipse.smarthome.core.library.items,
  org.eclipse.smarthome.core.library.types,
  org.eclipse.smarthome.core.transform,
  org.eclipse.smarthome.core.types,
+ org.eclipse.smarthome.io.net.http,
  org.eclipse.smarthome.io.rest.sitemap,
  org.eclipse.smarthome.model.core,
  org.eclipse.smarthome.model.sitemap,

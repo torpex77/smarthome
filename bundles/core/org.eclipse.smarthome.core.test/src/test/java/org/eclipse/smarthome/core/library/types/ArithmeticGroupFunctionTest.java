@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.core.library.types;
 
@@ -201,6 +206,18 @@ public class ArithmeticGroupFunctionTest {
         State state = function.calculate(items);
 
         assertEquals(new DecimalType("234.95"), state);
+    }
+
+    @Test
+    public void testCountFunction() {
+        items.add(new TestItem("TestItem1", new StringType("hello world")));
+        items.add(new TestItem("TestItem2", new StringType("world")));
+        items.add(new TestItem("TestItem3", new StringType("foo bar")));
+
+        function = new ArithmeticGroupFunction.Count(new StringType(".*world.*"));
+        State state = function.calculate(items);
+
+        assertEquals(new DecimalType("2"), state);
     }
 
     class TestItem extends GenericItem {

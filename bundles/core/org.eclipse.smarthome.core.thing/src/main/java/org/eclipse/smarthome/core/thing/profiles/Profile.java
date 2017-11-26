@@ -1,11 +1,19 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.core.thing.profiles;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.smarthome.core.types.State;
 
 /**
  * Common ancestor of all profile types.
@@ -19,6 +27,21 @@ package org.eclipse.smarthome.core.thing.profiles;
  * @author Simon Kaufmann - initial contribution and API.
  *
  */
+@NonNullByDefault
 public interface Profile {
+
+    /**
+     * Get the {@link ProfileTypeUID} of this profile.
+     *
+     * @return the UID of the profile type
+     */
+    ProfileTypeUID getProfileTypeUID();
+
+    /**
+     * Will be called if an item has changed its state and this information should be forwarded to the binding.
+     *
+     * @param state the new state
+     */
+    void onStateUpdateFromItem(State state);
 
 }

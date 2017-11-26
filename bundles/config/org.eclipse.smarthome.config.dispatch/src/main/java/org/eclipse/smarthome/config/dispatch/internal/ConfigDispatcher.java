@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.config.dispatch.internal;
 
@@ -326,6 +331,10 @@ public class ConfigDispatcher extends AbstractWatchService {
         List<String> lines = IOUtils.readLines(new FileInputStream(configFile));
         String exclusivePID = lines.size() > 0 ? getPIDFromLine(lines.get(0)) : null;
         if (exclusivePID != null) {
+            if (exclusivePIDMap.contains(exclusivePID)) {
+                logger.warn("The file {} subsequently defines the exclusive PID '{}'.", configFile.getAbsolutePath(),
+                        exclusivePID);
+            }
             pid = exclusivePID;
             lines = lines.subList(1, lines.size());
             exclusivePIDMap.setProcessedPID(pid, configFile.getAbsolutePath());
@@ -354,6 +363,13 @@ public class ConfigDispatcher extends AbstractWatchService {
                         configFile.getName(), pid, parsedLine.pid);
                 configuration.update((Dictionary) new Properties()); // update with empty properties
                 return;
+            }
+
+            if (!exclusivePIDMap.contains(pid) && parsedLine.pid != null && exclusivePIDMap.contains(parsedLine.pid)) {
+                logger.error(
+                        "Error parsing config file {}. The PID {} is exclusive but defined in another file, skipping the line.",
+                        configFile.getName(), parsedLine.pid);
+                continue;
             }
 
             if (parsedLine.pid != null) {

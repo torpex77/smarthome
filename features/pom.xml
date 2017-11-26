@@ -28,4 +28,19 @@
     <module>karaf</module>
   </modules>
 
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>${tycho-groupid}</groupId>
+          <artifactId>tycho-p2-plugin</artifactId>
+          <configuration>
+            <!-- fix to prevent double upload of p2metadata artifacts  -->
+            <defaultP2Metadata>false</defaultP2Metadata>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
 </project>

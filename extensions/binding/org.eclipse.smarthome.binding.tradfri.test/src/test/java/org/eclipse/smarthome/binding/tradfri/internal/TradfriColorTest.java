@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.tradfri.internal;
 
@@ -22,7 +27,7 @@ public class TradfriColorTest {
 
     @Test
     public void testFromCieKnownGood1() {
-        TradfriColor color = TradfriColor.fromCie(29577, 12294, 254);
+        TradfriColor color = TradfriColor.fromCie(29577, 12294, 354);
         assertNotNull(color);
         assertEquals(254, (int) color.rgbR);
         assertEquals(2, (int) color.rgbG);
@@ -41,7 +46,7 @@ public class TradfriColorTest {
         TradfriColor color = TradfriColor.fromCie(19983, 37417, 84);
         assertNotNull(color);
         assertEquals(30, (int) color.rgbR);
-        assertEquals(84, (int) color.rgbG);
+        assertEquals(86, (int) color.rgbG);
         assertEquals(7, (int) color.rgbB);
         assertEquals(19983, (int) color.xyX);
         assertEquals(37417, (int) color.xyY);
@@ -49,7 +54,39 @@ public class TradfriColorTest {
         assertNotNull(color.hsbType);
         assertEquals(102, color.hsbType.getHue().intValue());
         assertEquals(89, color.hsbType.getSaturation().intValue());
-        assertEquals(33, color.hsbType.getBrightness().intValue());
+        assertEquals(34, color.hsbType.getBrightness().intValue());
+    }
+
+    @Test
+    public void testFromCieKnownGood3() {
+        TradfriColor color = TradfriColor.fromCie(19983, 37417, 1);
+        assertNotNull(color);
+        assertEquals(0, (int) color.rgbR);
+        assertEquals(2, (int) color.rgbG);
+        assertEquals(0, (int) color.rgbB);
+        assertEquals(19983, (int) color.xyX);
+        assertEquals(37417, (int) color.xyY);
+        assertEquals(1, (int) color.brightness);
+        assertNotNull(color.hsbType);
+        assertEquals(120, color.hsbType.getHue().intValue());
+        assertEquals(100, color.hsbType.getSaturation().intValue());
+        assertEquals(1, color.hsbType.getBrightness().intValue());
+    }
+
+    @Test
+    public void testFromCieKnownGood4() {
+        TradfriColor color = TradfriColor.fromCie(11469, 3277, 181);
+        assertNotNull(color);
+        assertEquals(12, (int) color.rgbR);
+        assertEquals(0, (int) color.rgbG);
+        assertEquals(183, (int) color.rgbB);
+        assertEquals(11469, (int) color.xyX);
+        assertEquals(3277, (int) color.xyY);
+        assertEquals(181, (int) color.brightness);
+        assertNotNull(color.hsbType);
+        assertEquals(245, color.hsbType.getHue().intValue());
+        assertEquals(100, color.hsbType.getSaturation().intValue());
+        assertEquals(72, color.hsbType.getBrightness().intValue());
     }
 
     @Test
@@ -66,6 +103,22 @@ public class TradfriColorTest {
         assertEquals(0, color.hsbType.getHue().intValue());
         assertEquals(100, color.hsbType.getSaturation().intValue());
         assertEquals(100, color.hsbType.getBrightness().intValue());
+    }
+
+    @Test
+    public void testFromHSBTypeKnownGood2() {
+        TradfriColor color = TradfriColor.fromHSBType(new HSBType("0,100,1"));
+        assertNotNull(color);
+        assertEquals(2, (int) color.rgbR);
+        assertEquals(0, (int) color.rgbG);
+        assertEquals(0, (int) color.rgbB);
+        assertEquals(45914, (int) color.xyX);
+        assertEquals(19615, (int) color.xyY);
+        assertEquals(2, (int) color.brightness);
+        assertNotNull(color.hsbType);
+        assertEquals(0, color.hsbType.getHue().intValue());
+        assertEquals(100, color.hsbType.getSaturation().intValue());
+        assertEquals(1, color.hsbType.getBrightness().intValue());
     }
 
     @Test

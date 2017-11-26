@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.core.thing.firmware;
 
@@ -32,11 +37,11 @@ public final class FirmwareEventFactory extends AbstractEventFactory {
 
     private static final int THING_UID_TOPIC_IDX = 2;
 
-    private static final String THING_UID_TOPIC_KEY = "{thingUID}";
+    static final String THING_UID_TOPIC_KEY = "{thingUID}";
 
-    private static final String FIRMWARE_STATUS_TOPIC = "smarthome/things/{thingUID}/firmware/status";
-    private static final String FIRMWARE_UPDATE_PROGRESS_TOPIC = "smarthome/things/{thingUID}/firmware/update/progress";
-    private static final String FIRMWARE_UPDATE_RESULT_TOPIC = "smarthome/things/{thingUID}/firmware/update/result";
+    static final String FIRMWARE_STATUS_TOPIC = "smarthome/things/{thingUID}/firmware/status";
+    static final String FIRMWARE_UPDATE_PROGRESS_TOPIC = "smarthome/things/{thingUID}/firmware/update/progress";
+    static final String FIRMWARE_UPDATE_RESULT_TOPIC = "smarthome/things/{thingUID}/firmware/update/result";
 
     /**
      * Creates a new firmware event factory.

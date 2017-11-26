@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.test.java;
 
@@ -45,20 +50,19 @@ public class JavaOSGiTest extends JavaTest {
 
     @Before
     public void bindBundleContext() {
-        bundleContext = getBundleContext();
+        bundleContext = initBundleContext();
         assertThat(bundleContext, is(notNullValue()));
     }
 
     /**
-     * Get the {@link BundleContext}, which is used for registration and unregistration of OSGi services.
+     * Initialise the {@link BundleContext}, which is used for registration and unregistration of OSGi services.
      *
      * <p>
-     * By default it uses the bundle context of the test class itself. This method can be overridden by concrete
-     * implementations to provide another bundle context.
+     * This uses the bundle context of the test class itself.
      *
      * @return bundle context
      */
-    private BundleContext getBundleContext() {
+    private BundleContext initBundleContext() {
         final Bundle bundle = FrameworkUtil.getBundle(this.getClass());
         if (bundle != null) {
             return bundle.getBundleContext();

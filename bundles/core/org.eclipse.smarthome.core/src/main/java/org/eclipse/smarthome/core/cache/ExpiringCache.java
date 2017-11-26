@@ -1,12 +1,18 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.core.cache;
 
+import java.lang.ref.SoftReference;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -25,8 +31,7 @@ import org.eclipse.jdt.annotation.Nullable;
 public class ExpiringCache<V> {
     private final long expiry;
     private final Supplier<V> action;
-    @Nullable
-    private V value;
+    private SoftReference<V> value;
     private long expiresAt;
 
     /**
@@ -51,17 +56,18 @@ public class ExpiringCache<V> {
      */
     @Nullable
     public synchronized V getValue() {
-        if (value == null || isExpired()) {
+        V cachedValue = value.get();
+        if (cachedValue == null || isExpired()) {
             return refreshValue();
         }
-        return value;
+        return cachedValue;
     }
 
     /**
      * Invalidates the value in the cache.
      */
-    public synchronized void invalidateValue() {
-        value = null;
+    public final synchronized void invalidateValue() {
+        value = new SoftReference<>(null);
         expiresAt = 0;
     }
 
@@ -72,9 +78,10 @@ public class ExpiringCache<V> {
      */
     @Nullable
     public synchronized V refreshValue() {
-        value = action.get();
+        V freshValue = action.get();
+        value = new SoftReference<>(freshValue);
         expiresAt = System.nanoTime() + expiry;
-        return value;
+        return freshValue;
     }
 
     /**

@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ClassPath: patch/,.
-Bundle-License: http://www.eclipse.org/legal/epl-v10.html
+Bundle-License: https://www.eclipse.org/legal/epl-2.0/
 Bundle-ManifestVersion: 2
 Bundle-Name: Eclipse SmartHome Paper UI
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
@@ -8,8 +8,11 @@ Bundle-SymbolicName: org.eclipse.smarthome.ui.paper;singleton:=true
 Bundle-Vendor: Eclipse.org/SmartHome
 Bundle-Version: 0.9.0.qualifier
 Import-Package: 
+ javax.servlet.http,
  org.eclipse.jdt.annotation;resolution:=optional,
- org.osgi.service.component,
+ org.eclipse.smarthome.io.net.http,
+ org.osgi.framework,
+ org.osgi.service.component;resolution:=optional,
  org.osgi.service.http,
  org.slf4j
 Service-Component: OSGI-INF/*.xml

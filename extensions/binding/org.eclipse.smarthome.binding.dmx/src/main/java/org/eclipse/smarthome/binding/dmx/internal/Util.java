@@ -1,13 +1,18 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.dmx.internal;
 
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.Channel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.DmxChannel;
 import org.eclipse.smarthome.core.library.types.PercentType;
 import org.slf4j.Logger;
 
@@ -96,8 +101,8 @@ public class Util {
      * @return value as Integer (0-255)
      */
     public static int toDmxValue(PercentType value) {
-        int intValue = value.intValue() * (Channel.MAX_VALUE - Channel.MIN_VALUE) / 100 + Channel.MIN_VALUE;
-        return coerceToRange(intValue, Channel.MIN_VALUE, Channel.MAX_VALUE);
+        int intValue = value.intValue() * (DmxChannel.MAX_VALUE - DmxChannel.MIN_VALUE) / 100 + DmxChannel.MIN_VALUE;
+        return coerceToRange(intValue, DmxChannel.MIN_VALUE, DmxChannel.MAX_VALUE);
     }
 
     /**
@@ -107,7 +112,7 @@ public class Util {
      * @return value as Integer (0-255)
      */
     public static int toDmxValue(int value) {
-        return coerceToRange(value, Channel.MIN_VALUE, Channel.MAX_VALUE);
+        return coerceToRange(value, DmxChannel.MIN_VALUE, DmxChannel.MAX_VALUE);
     }
 
     /**
@@ -117,7 +122,7 @@ public class Util {
      * @return value as Integer (0-255)
      */
     public static int toDmxValue(String value) {
-        return coerceToRange(Integer.valueOf(value), Channel.MIN_VALUE, Channel.MAX_VALUE);
+        return coerceToRange(Integer.valueOf(value), DmxChannel.MIN_VALUE, DmxChannel.MAX_VALUE);
     }
 
     /**
@@ -137,10 +142,10 @@ public class Util {
      * @return value as PercentType
      */
     public static PercentType toPercentValue(int value) {
-        if (value == Channel.MIN_VALUE) {
+        if (value == DmxChannel.MIN_VALUE) {
             return PercentType.ZERO;
         } else {
-            return new PercentType(((value - Channel.MIN_VALUE) * 100) / (Channel.MAX_VALUE - Channel.MIN_VALUE));
+            return new PercentType(((value - DmxChannel.MIN_VALUE) * 100) / (DmxChannel.MAX_VALUE - DmxChannel.MIN_VALUE));
         }
     }
 
@@ -153,6 +158,6 @@ public class Util {
      * @return fraction needed for fading
      */
     public static int fadeTimeFraction(int currentValue, int targetValue, int fadeTime) {
-        return Math.abs(targetValue - currentValue) * fadeTime / (Channel.MAX_VALUE - Channel.MIN_VALUE);
+        return Math.abs(targetValue - currentValue) * fadeTime / (DmxChannel.MAX_VALUE - DmxChannel.MIN_VALUE);
     }
 }

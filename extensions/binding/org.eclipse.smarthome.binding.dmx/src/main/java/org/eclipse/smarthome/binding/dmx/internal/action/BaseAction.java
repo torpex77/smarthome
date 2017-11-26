@@ -1,13 +1,18 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.dmx.internal.action;
 
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.Channel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.DmxChannel;
 
 /**
  * The {@link BaseAction} is the base class for Actions like faders, chasers, etc..
@@ -17,7 +22,7 @@ import org.eclipse.smarthome.binding.dmx.internal.multiverse.Channel;
  */
 public abstract class BaseAction {
 
-    protected boolean completed = false;
+    protected ActionState state = ActionState.WAITING;
     protected long startTime = 0;
 
     /**
@@ -27,13 +32,13 @@ public abstract class BaseAction {
      * @param currentTime UNIX timestamp to use as current time
      * @return value as float between 0 - 65535
      */
-    public abstract int getNewValue(Channel channel, long currentTime);
+    public abstract int getNewValue(DmxChannel channel, long currentTime);
 
     /**
-     * @return true if the action was completed.
+     * @return the action's state
      */
-    public final boolean isCompleted() {
-        return completed;
+    public final ActionState getState() {
+        return state;
     }
 
     /**
@@ -41,7 +46,7 @@ public abstract class BaseAction {
      */
     public void reset() {
         startTime = 0;
-        completed = false;
+        state = ActionState.WAITING;
     }
 
 }

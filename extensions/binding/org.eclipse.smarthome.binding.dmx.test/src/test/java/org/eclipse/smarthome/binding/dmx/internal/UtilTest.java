@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.dmx.internal;
 
@@ -11,7 +16,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import org.eclipse.smarthome.binding.dmx.internal.Util;
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.Channel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.DmxChannel;
 import org.eclipse.smarthome.core.library.types.PercentType;
 import org.junit.Test;
 
@@ -26,11 +31,11 @@ public class UtilTest {
     public void coercingOfDmxValues() {
         // overrange
         int value = Util.toDmxValue(300);
-        assertThat(value, is(Channel.MAX_VALUE));
+        assertThat(value, is(DmxChannel.MAX_VALUE));
 
         // underrange
         value = Util.toDmxValue(-1);
-        assertThat(value, is(Channel.MIN_VALUE));
+        assertThat(value, is(DmxChannel.MIN_VALUE));
 
         // inrange
         value = Util.toDmxValue(100);

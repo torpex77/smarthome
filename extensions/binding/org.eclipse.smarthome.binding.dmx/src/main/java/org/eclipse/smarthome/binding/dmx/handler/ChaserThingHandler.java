@@ -1,11 +1,15 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
-
 package org.eclipse.smarthome.binding.dmx.handler;
 
 import static org.eclipse.smarthome.binding.dmx.DmxBindingConstants.*;
@@ -22,8 +26,8 @@ import org.eclipse.smarthome.binding.dmx.internal.DmxThingHandler;
 import org.eclipse.smarthome.binding.dmx.internal.ValueSet;
 import org.eclipse.smarthome.binding.dmx.internal.action.FadeAction;
 import org.eclipse.smarthome.binding.dmx.internal.action.ResumeAction;
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.BaseChannel;
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.Channel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.BaseDmxChannel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.DmxChannel;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.StringType;
@@ -50,7 +54,7 @@ public class ChaserThingHandler extends DmxThingHandler {
 
     private static Logger logger = LoggerFactory.getLogger(ChaserThingHandler.class);
 
-    private List<Channel> channels = new ArrayList<Channel>();
+    private List<DmxChannel> channels = new ArrayList<DmxChannel>();
     private List<ValueSet> values = new ArrayList<ValueSet>();
 
     private boolean resumeAfter = false;
@@ -67,7 +71,7 @@ public class ChaserThingHandler extends DmxThingHandler {
                 if (command instanceof OnOffType) {
                     if (((OnOffType) command).equals(OnOffType.ON)) {
                         Integer channelCounter = 0;
-                        for (Channel channel : channels) {
+                        for (DmxChannel channel : channels) {
                             if (resumeAfter) {
                                 channel.suspendAction();
                             } else {
@@ -86,7 +90,7 @@ public class ChaserThingHandler extends DmxThingHandler {
                             channelCounter++;
                         }
                     } else {
-                        for (Channel channel : channels) {
+                        for (DmxChannel channel : channels) {
                             if (resumeAfter && channel.isSuspended()) {
                                 channel.setChannelAction(new ResumeAction());
                             } else {
@@ -147,10 +151,10 @@ public class ChaserThingHandler extends DmxThingHandler {
             channels.clear();
             DmxBridgeHandler bridgeHandler = (DmxBridgeHandler) getBridge().getHandler();
             try {
-                List<BaseChannel> configChannels = BaseChannel.fromString((String) configuration.get(CONFIG_DMX_ID),
+                List<BaseDmxChannel> configChannels = BaseDmxChannel.fromString((String) configuration.get(CONFIG_DMX_ID),
                         bridgeHandler.getUniverseId());
                 logger.trace("found {} channels in {}", configChannels.size(), this.thing.getUID());
-                for (BaseChannel channel : configChannels) {
+                for (BaseDmxChannel channel : configChannels) {
                     channels.add(bridgeHandler.getDmxChannel(channel, this.thing));
                 }
             } catch (IllegalArgumentException e) {
@@ -199,7 +203,7 @@ public class ChaserThingHandler extends DmxThingHandler {
     public void channelUnlinked(ChannelUID channelUID) {
         switch (channelUID.getId()) {
             case CHANNEL_SWITCH:
-                for (Channel channel : channels) {
+                for (DmxChannel channel : channels) {
                     channel.removeListener(channelUID);
                 }
                 break;

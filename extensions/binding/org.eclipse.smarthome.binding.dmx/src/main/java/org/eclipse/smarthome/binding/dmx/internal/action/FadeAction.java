@@ -1,14 +1,19 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.dmx.internal.action;
 
 import org.eclipse.smarthome.binding.dmx.internal.Util;
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.Channel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.DmxChannel;
 import org.eclipse.smarthome.core.library.types.PercentType;
 
 /**
@@ -30,7 +35,7 @@ public class FadeAction extends BaseAction {
     private int startValue;
 
     /** Desired channel output value. **/
-    private int targetValue;
+    private final int targetValue;
 
     private float stepDuration;
 
@@ -67,11 +72,12 @@ public class FadeAction extends BaseAction {
     }
 
     @Override
-    public int getNewValue(Channel channel, long currentTime) {
+    public int getNewValue(DmxChannel channel, long currentTime) {
         int newValue = channel.getHiResValue();
 
         if (startTime == 0) {
             startTime = currentTime;
+            state = ActionState.RUNNING;
 
             if (fadeTime != 0) {
                 startValue = channel.getHiResValue();
@@ -80,10 +86,10 @@ public class FadeAction extends BaseAction {
                 if (startValue == targetValue) {
                     stepDuration = 1;
                 } else if (startValue > targetValue) {
-                    fadeDirection = FadeDirection.down;
+                    fadeDirection = FadeDirection.DOWN;
                     stepDuration = (float) fadeTime / (startValue - targetValue);
                 } else {
-                    fadeDirection = FadeDirection.up;
+                    fadeDirection = FadeDirection.UP;
                     stepDuration = (float) fadeTime / (targetValue - startValue);
                 }
             } else {
@@ -100,7 +106,7 @@ public class FadeAction extends BaseAction {
             }
             int currentStep = (int) (duration / stepDuration);
 
-            if (fadeDirection == FadeDirection.up) {
+            if (fadeDirection == FadeDirection.UP) {
                 newValue = startValue + currentStep;
                 if (newValue > targetValue) {
                     newValue = targetValue;
@@ -111,14 +117,20 @@ public class FadeAction extends BaseAction {
                     newValue = targetValue;
                 }
             }
+        } else {
+            newValue = targetValue;
         }
 
-        if (newValue == targetValue && holdTime > -1) {
-            // we reached the target already, check if we need to hold longer
-            if (((holdTime > 0 || fadeTime > 0) && (duration >= fadeTime + holdTime))
-                    || (holdTime == 0 && fadeTime == 0)) {
-                // mark action as completed
-                completed = true;
+        if (newValue == targetValue) {
+            if (holdTime > -1) {
+                // we reached the target already, check if we need to hold longer
+                if (((holdTime > 0 || fadeTime > 0) && (duration >= fadeTime + holdTime))
+                        || (holdTime == 0 && fadeTime == 0)) {
+                    // mark action as completed
+                    state = ActionState.COMPLETED;
+                }
+            } else {
+                state = ActionState.COMPLETEDFINAL;
             }
         }
 

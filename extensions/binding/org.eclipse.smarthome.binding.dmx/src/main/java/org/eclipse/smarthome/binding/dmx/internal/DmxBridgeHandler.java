@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.binding.dmx.internal;
 
@@ -13,8 +18,8 @@ import java.math.BigDecimal;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.BaseChannel;
-import org.eclipse.smarthome.binding.dmx.internal.multiverse.Channel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.BaseDmxChannel;
+import org.eclipse.smarthome.binding.dmx.internal.multiverse.DmxChannel;
 import org.eclipse.smarthome.binding.dmx.internal.multiverse.Universe;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.OnOffType;
@@ -89,7 +94,7 @@ public abstract class DmxBridgeHandler extends BaseBridgeHandler {
      * @param thing the Thing that requests the channel to track channel usage
      * @return a Channel object
      */
-    public Channel getDmxChannel(BaseChannel channel, Thing thing) {
+    public DmxChannel getDmxChannel(BaseDmxChannel channel, Thing thing) {
         return universe.registerChannel(channel, thing);
     }
 

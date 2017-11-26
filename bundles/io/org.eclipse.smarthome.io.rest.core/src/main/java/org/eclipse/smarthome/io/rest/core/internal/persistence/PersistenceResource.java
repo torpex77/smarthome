@@ -1,9 +1,14 @@
 /**
- * Copyright (c) 2014-2017 by the respective copyright holders.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.smarthome.io.rest.core.internal.persistence;
 
@@ -49,6 +54,10 @@ import org.eclipse.smarthome.core.types.TypeParser;
 import org.eclipse.smarthome.io.rest.JSONResponse;
 import org.eclipse.smarthome.io.rest.LocaleUtil;
 import org.eclipse.smarthome.io.rest.RESTResource;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +78,7 @@ import io.swagger.annotations.ApiResponses;
  */
 @Path(PersistenceResource.PATH)
 @Api(value = PersistenceResource.PATH)
+@Component(service = { RESTResource.class, PersistenceResource.class })
 public class PersistenceResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(PersistenceResource.class);
@@ -84,6 +94,7 @@ public class PersistenceResource implements RESTResource {
     private ItemRegistry itemRegistry;
     private PersistenceServiceRegistry persistenceServiceRegistry;
 
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     protected void setPersistenceServiceRegistry(PersistenceServiceRegistry persistenceServiceRegistry) {
         this.persistenceServiceRegistry = persistenceServiceRegistry;
     }
@@ -92,6 +103,7 @@ public class PersistenceResource implements RESTResource {
         this.persistenceServiceRegistry = null;
     }
 
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     protected void setItemRegistry(ItemRegistry itemRegistry) {
         this.itemRegistry = itemRegistry;
     }
@@ -425,7 +437,8 @@ public class PersistenceResource implements RESTResource {
 
         if (service == null) {
             logger.warn("Persistence service not found '{}'.", effectiveServiceId);
-            return JSONResponse.createErrorResponse(Status.BAD_REQUEST, "Persistence service not found: " + effectiveServiceId);
+            return JSONResponse.createErrorResponse(Status.BAD_REQUEST,
+                    "Persistence service not found: " + effectiveServiceId);
         }
 
         Item item;
