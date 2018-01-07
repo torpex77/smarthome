@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -39,7 +39,7 @@ public class ChartRenderer extends AbstractWidgetRenderer {
 
     private final Logger logger = LoggerFactory.getLogger(ChartRenderer.class);
 
-    private final static String URL_NONE_ICON = "images/none.png";
+    private static final String URL_NONE_ICON = "images/none.png";
 
     @Override
     public boolean canRender(Widget w) {

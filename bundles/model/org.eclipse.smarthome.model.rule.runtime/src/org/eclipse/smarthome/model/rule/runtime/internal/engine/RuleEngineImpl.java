@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -14,7 +14,6 @@ package org.eclipse.smarthome.model.rule.runtime.internal.engine;
 
 import static org.eclipse.smarthome.model.rule.runtime.internal.engine.RuleTriggerManager.TriggerTypes.*;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
@@ -59,7 +58,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import com.google.inject.Injector;
 
 /**
@@ -108,9 +106,7 @@ public class RuleEngineImpl implements ItemRegistryChangeListener, StateChangeLi
         logger.debug("Started rule engine");
 
         // read all rule files
-        Iterable<String> ruleModelNames = modelRepository.getAllModelNamesOfType("rules");
-        ArrayList<String> clonedList = Lists.newArrayList(ruleModelNames);
-        for (String ruleModelName : clonedList) {
+        for (String ruleModelName : modelRepository.getAllModelNamesOfType("rules")) {
             EObject model = modelRepository.getModel(ruleModelName);
             if (model instanceof RuleModel) {
                 RuleModel ruleModel = (RuleModel) model;
@@ -205,7 +201,7 @@ public class RuleEngineImpl implements ItemRegistryChangeListener, StateChangeLi
         if (!starting && triggerManager != null) {
             Iterable<Rule> rules = triggerManager.getRules(CHANGE, item, oldState, newState);
 
-            executeRules(rules, oldState);
+            executeRules(rules, item, oldState);
         }
     }
 
@@ -213,7 +209,7 @@ public class RuleEngineImpl implements ItemRegistryChangeListener, StateChangeLi
     public void stateUpdated(Item item, State state) {
         if (!starting && triggerManager != null) {
             Iterable<Rule> rules = triggerManager.getRules(UPDATE, item, state);
-            executeRules(rules);
+            executeRules(rules, item);
         }
     }
 
@@ -225,7 +221,7 @@ public class RuleEngineImpl implements ItemRegistryChangeListener, StateChangeLi
                 Item item = itemRegistry.getItem(itemName);
                 Iterable<Rule> rules = triggerManager.getRules(COMMAND, item, command);
 
-                executeRules(rules, command);
+                executeRules(rules, item, command);
             } catch (ItemNotFoundException e) {
                 // ignore commands for non-existent items
             }
@@ -367,17 +363,27 @@ public class RuleEngineImpl implements ItemRegistryChangeListener, StateChangeLi
         }
     }
 
-    protected synchronized void executeRules(Iterable<Rule> rules, Command command) {
+    protected synchronized void executeRules(Iterable<Rule> rules, Item item) {
         for (Rule rule : rules) {
             RuleEvaluationContext context = new RuleEvaluationContext();
+            context.newValue(QualifiedName.create(RulesJvmModelInferrer.VAR_TRIGGERING_ITEM), item);
+            executeRule(rule, context);
+        }
+    }
+
+    protected synchronized void executeRules(Iterable<Rule> rules, Item item, Command command) {
+        for (Rule rule : rules) {
+            RuleEvaluationContext context = new RuleEvaluationContext();
+            context.newValue(QualifiedName.create(RulesJvmModelInferrer.VAR_TRIGGERING_ITEM), item);
             context.newValue(QualifiedName.create(RulesJvmModelInferrer.VAR_RECEIVED_COMMAND), command);
             executeRule(rule, context);
         }
     }
 
-    protected synchronized void executeRules(Iterable<Rule> rules, State oldState) {
+    protected synchronized void executeRules(Iterable<Rule> rules, Item item, State oldState) {
         for (Rule rule : rules) {
             RuleEvaluationContext context = new RuleEvaluationContext();
+            context.newValue(QualifiedName.create(RulesJvmModelInferrer.VAR_TRIGGERING_ITEM), item);
             context.newValue(QualifiedName.create(RulesJvmModelInferrer.VAR_PREVIOUS_STATE), oldState);
             executeRule(rule, context);
         }

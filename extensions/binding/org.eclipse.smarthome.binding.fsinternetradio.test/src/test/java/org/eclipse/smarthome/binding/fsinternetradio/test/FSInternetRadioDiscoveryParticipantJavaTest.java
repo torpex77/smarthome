@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -100,6 +100,7 @@ public class FSInternetRadioDiscoveryParticipantJavaTest {
      *
      * @throws ValidationException
      */
+    @SuppressWarnings("null")
     @Test
     public void validDiscoveryResultWithComplete() throws ValidationException {
         RemoteDevice completeFSInternetRadioDevice = createDefaultFSInternetRadioDevice(DEFAULT_RADIO_BASE_URL);
@@ -140,6 +141,7 @@ public class FSInternetRadioDiscoveryParticipantJavaTest {
      *
      * @throws ValidationException
      */
+    @SuppressWarnings("null")
     @Test
     public void validDiscoveryResultIfWithoutBaseUrl() throws ValidationException {
         RemoteDevice fsInternetRadioDeviceWithoutUrl = createDefaultFSInternetRadioDevice(null);

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -12,25 +12,28 @@
  */
 package org.eclipse.smarthome.core.thing.firmware;
 
-import static org.eclipse.smarthome.core.thing.firmware.FirmwareStatusInfo.*;
+import static org.eclipse.smarthome.core.thing.firmware.FirmwareStatusInfo.createUnknownInfo;
+import static org.eclipse.smarthome.core.thing.firmware.FirmwareStatusInfo.createUpToDateInfo;
+import static org.eclipse.smarthome.core.thing.firmware.FirmwareStatusInfo.createUpdateAvailableInfo;
+import static org.eclipse.smarthome.core.thing.firmware.FirmwareStatusInfo.createUpdateExecutableInfo;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.eclipse.smarthome.config.core.validation.ConfigDescriptionValidator;
 import org.eclipse.smarthome.config.core.validation.ConfigValidationException;
-import org.eclipse.smarthome.core.common.SafeMethodCaller;
+import org.eclipse.smarthome.core.common.SafeCaller;
 import org.eclipse.smarthome.core.common.ThreadPoolManager;
 import org.eclipse.smarthome.core.events.Event;
 import org.eclipse.smarthome.core.events.EventFilter;
@@ -57,7 +60,6 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -66,6 +68,7 @@ import com.google.common.collect.ImmutableSet;
  * central instance to start a firmware update.
  *
  * @author Thomas Höfer - Initial contribution
+ * @authot Dimitar Ivanov - update and cancel operations are run with different safe caller identifiers in order to execute asynchronously
  */
 @Component(immediate = true, service = { EventSubscriber.class, FirmwareUpdateService.class })
 public final class FirmwareUpdateService implements EventSubscriber {
@@ -88,7 +91,7 @@ public final class FirmwareUpdateService implements EventSubscriber {
 
     protected int timeout = 30 * 60 * 1000;
 
-    private final Set<String> subscribedEventTypes = ImmutableSet.of(ThingStatusInfoChangedEvent.TYPE);
+    private final Set<String> subscribedEventTypes = Collections.singleton(ThingStatusInfoChangedEvent.TYPE);
 
     private final Map<ThingUID, FirmwareStatusInfo> firmwareStatusInfoMap = new ConcurrentHashMap<>();
     private final Map<ThingUID, ProgressCallbackImpl> progressCallbackMap = new ConcurrentHashMap<>();
@@ -98,6 +101,8 @@ public final class FirmwareUpdateService implements EventSubscriber {
     private EventPublisher eventPublisher;
     private TranslationProvider i18nProvider;
     private LocaleProvider localeProvider;
+    private SafeCaller safeCaller;
+    private ConfigDescriptionValidator configDescriptionValidator;
 
     private final Runnable firmwareStatusRunnable = new Runnable() {
         @Override
@@ -167,8 +172,7 @@ public final class FirmwareUpdateService implements EventSubscriber {
      * @throws NullPointerException if the given thing UID is null
      */
     public FirmwareStatusInfo getFirmwareStatusInfo(ThingUID thingUID) {
-        Preconditions.checkNotNull(thingUID, "Thing UID must not be null.");
-
+        Objects.requireNonNull(thingUID, "Thing UID must not be null.");
         FirmwareUpdateHandler firmwareUpdateHandler = getFirmwareUpdateHandler(thingUID);
 
         if (firmwareUpdateHandler == null) {
@@ -211,8 +215,8 @@ public final class FirmwareUpdateService implements EventSubscriber {
      *             </ul>
      */
     public void updateFirmware(final ThingUID thingUID, final FirmwareUID firmwareUID, final Locale locale) {
-        Preconditions.checkNotNull(thingUID, "Thing UID must not be null.");
-        Preconditions.checkNotNull(firmwareUID, "Firmware UID must not be null.");
+        Objects.requireNonNull(thingUID, "Thing UID must not be null.");
+        Objects.requireNonNull(firmwareUID, "Firmware UID must not be null.");
 
         final FirmwareUpdateHandler firmwareUpdateHandler = getFirmwareUpdateHandler(thingUID);
 
@@ -233,29 +237,16 @@ public final class FirmwareUpdateService implements EventSubscriber {
 
         logger.debug("Starting firmware update for thing with UID {} and firmware with UID {}", thingUID, firmwareUID);
 
-        getPool().submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    SafeMethodCaller.call(new SafeMethodCaller.ActionWithException<Void>() {
-                        @Override
-                        public Void call() {
-                            firmwareUpdateHandler.updateFirmware(firmware, progressCallback);
-                            return null;
-                        }
-                    }, timeout);
-                } catch (ExecutionException e) {
-                    logger.error(
-                            "Unexpected exception occurred for firmware update of thing with UID {} and firmware with UID {}.",
-                            thingUID, firmwareUID, e.getCause());
-                    progressCallback.failedInternal("unexpected-handler-error");
-                } catch (TimeoutException e) {
-                    logger.error("Timeout occurred for firmware update of thing with UID {} and firmware with UID {}.",
-                            thingUID, firmwareUID, e);
-                    progressCallback.failedInternal("timeout-error");
-                }
-            }
-        });
+        safeCaller.create(firmwareUpdateHandler).withTimeout(timeout).withAsync().onTimeout(() -> {
+            logger.error("Timeout occurred for firmware update of thing with UID {} and firmware with UID {}.",
+                    thingUID, firmwareUID);
+            progressCallback.failedInternal("timeout-error");
+        }).onException(e -> {
+            logger.error(
+                    "Unexpected exception occurred for firmware update of thing with UID {} and firmware with UID {}.",
+                    thingUID, firmwareUID, e.getCause());
+            progressCallback.failedInternal("unexpected-handler-error");
+        }).build().updateFirmware(firmware, progressCallback);
     }
 
     /**
@@ -265,35 +256,23 @@ public final class FirmwareUpdateService implements EventSubscriber {
      * @param thingUID the thing UID (must not be null)
      */
     public void cancelFirmwareUpdate(final ThingUID thingUID) {
-        Preconditions.checkNotNull(thingUID, "Thing UID must not be null.");
+        Objects.requireNonNull(thingUID, "Thing UID must not be null.");
         final FirmwareUpdateHandler firmwareUpdateHandler = getFirmwareUpdateHandler(thingUID);
         if (firmwareUpdateHandler == null) {
             throw new IllegalArgumentException(
                     String.format("There is no firmware update handler for thing with UID %s.", thingUID));
         }
         final ProgressCallbackImpl progressCallback = getProgressCallback(thingUID);
-        getPool().submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    SafeMethodCaller.call(new SafeMethodCaller.ActionWithException<Void>() {
-                        @Override
-                        public Void call() {
-                            logger.debug("Canceling firmware update for thing with UID {}.", thingUID);
-                            firmwareUpdateHandler.cancel();
-                            return null;
-                        }
-                    });
-                } catch (ExecutionException e) {
-                    logger.error("Unexpected exception occurred while canceling firmware update of thing with UID {}.",
-                            thingUID, e.getCause());
-                    progressCallback.failedInternal("unexpected-handler-error-during-cancel");
-                } catch (TimeoutException e) {
-                    logger.error("Timeout occurred while canceling firmware update of thing with UID {}.", thingUID, e);
-                    progressCallback.failedInternal("timeout-error-during-cancel");
-                }
-            }
-        });
+
+        logger.debug("Cancelling firmware update for thing with UID {}.", thingUID);
+        safeCaller.create(firmwareUpdateHandler).withTimeout(timeout).withAsync().onTimeout(() -> {
+            logger.error("Timeout occurred while cancelling firmware update of thing with UID {}.", thingUID);
+            progressCallback.failedInternal("timeout-error-during-cancel");
+        }).onException(e -> {
+            logger.error("Unexpected exception occurred while cancelling firmware update of thing with UID {}.",
+                    thingUID, e.getCause());
+            progressCallback.failedInternal("unexpected-handler-error-during-cancel");
+        }).withIdentifier(new Object()).build().cancel();
     }
 
     @Override
@@ -461,7 +440,7 @@ public final class FirmwareUpdateService implements EventSubscriber {
         }
 
         try {
-            ConfigDescriptionValidator.validate(config, new URI(CONFIG_DESC_URI_KEY));
+            configDescriptionValidator.validate(config, new URI(CONFIG_DESC_URI_KEY));
         } catch (URISyntaxException | ConfigValidationException e) {
             logger.debug("Validation of new configuration values failed. Will keep current configuration.", e);
             return false;
@@ -549,6 +528,24 @@ public final class FirmwareUpdateService implements EventSubscriber {
 
     protected void unsetLocaleProvider(final LocaleProvider localeProvider) {
         this.localeProvider = null;
+    }
+
+    @Reference
+    protected void setSafeCaller(SafeCaller safeCaller) {
+        this.safeCaller = safeCaller;
+    }
+
+    protected void unsetSafeCaller(SafeCaller safeCaller) {
+        this.safeCaller = null;
+    }
+
+    @Reference
+    protected void setConfigDescriptionValidator(ConfigDescriptionValidator configDescriptionValidator) {
+        this.configDescriptionValidator = configDescriptionValidator;
+    }
+
+    protected void unsetConfigDescriptionValidator(ConfigDescriptionValidator configDescriptionValidator) {
+        this.configDescriptionValidator = null;
     }
 
 }

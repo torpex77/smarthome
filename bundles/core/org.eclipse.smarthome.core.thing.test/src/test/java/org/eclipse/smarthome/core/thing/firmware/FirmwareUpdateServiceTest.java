@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -36,7 +36,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.eclipse.smarthome.core.common.SafeMethodCaller;
+import org.eclipse.smarthome.config.core.validation.ConfigDescriptionValidator;
+import org.eclipse.smarthome.core.common.SafeCaller;
 import org.eclipse.smarthome.core.events.Event;
 import org.eclipse.smarthome.core.events.EventPublisher;
 import org.eclipse.smarthome.core.i18n.LocaleProvider;
@@ -51,7 +52,7 @@ import org.eclipse.smarthome.core.thing.binding.firmware.FirmwareUpdateBackgroun
 import org.eclipse.smarthome.core.thing.binding.firmware.FirmwareUpdateHandler;
 import org.eclipse.smarthome.core.thing.binding.firmware.ProgressCallback;
 import org.eclipse.smarthome.core.thing.binding.firmware.ProgressStep;
-import org.eclipse.smarthome.test.java.JavaTest;
+import org.eclipse.smarthome.test.java.JavaOSGiTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -67,8 +68,9 @@ import org.osgi.framework.Bundle;
  *
  * @author Thomas Höfer - Initial contribution
  * @author Simon Kaufmann - converted to standalone Java tests
+ * @author Dimitar Ivanov - added a test for valid cancel execution during firmware update
  */
-public class FirmwareUpdateServiceTest extends JavaTest {
+public class FirmwareUpdateServiceTest extends JavaOSGiTest {
 
     public static final ProgressStep[] SEQUENCE = new ProgressStep[] { ProgressStep.REBOOTING, ProgressStep.DOWNLOADING,
             ProgressStep.TRANSFERRING, ProgressStep.UPDATING };
@@ -112,6 +114,8 @@ public class FirmwareUpdateServiceTest extends JavaTest {
     @Mock
     private TranslationProvider mockTranslationProvider;
 
+    private SafeCaller safeCaller;
+
     @Before
     public void setup() {
         initMocks(this);
@@ -128,6 +132,11 @@ public class FirmwareUpdateServiceTest extends JavaTest {
         thing3 = ThingBuilder.create(THING_TYPE_UID2, THING3_ID).withProperties(props3).build();
 
         firmwareUpdateService = new FirmwareUpdateService();
+
+        safeCaller = getService(SafeCaller.class);
+        assertNotNull(safeCaller);
+
+        firmwareUpdateService.setSafeCaller(safeCaller);
 
         handler1 = addHandler(thing1);
         handler2 = addHandler(thing2);
@@ -158,6 +167,7 @@ public class FirmwareUpdateServiceTest extends JavaTest {
         firmwareRegistry.addFirmwareProvider(mockProvider);
 
         firmwareUpdateService.setTranslationProvider(mockTranslationProvider);
+        firmwareUpdateService.setConfigDescriptionValidator(getService(ConfigDescriptionValidator.class));
     }
 
     @After
@@ -311,6 +321,38 @@ public class FirmwareUpdateServiceTest extends JavaTest {
             verify(handler3, times(1)).cancel();
         });
     }
+    
+    @Test
+    public void testCancelFirmwareUpdateIntheMiddleOfUpdate() {
+        final long stepsTime = 10;
+        final int numberOfSteps = SEQUENCE.length;
+        final AtomicBoolean isUpdateFinished = new AtomicBoolean(false);
+
+        doAnswer(invocation -> {
+            ProgressCallback progressCallback = (ProgressCallback) invocation.getArguments()[1];
+            progressCallback.defineSequence(SEQUENCE);
+
+            // Simulate update steps with delay
+            for (int updateStepsCount = 0; updateStepsCount < numberOfSteps; updateStepsCount++) {
+                progressCallback.next();
+                Thread.sleep(stepsTime);
+            }
+            progressCallback.success();
+            isUpdateFinished.set(true);
+            return null;
+        }).when(handler1).updateFirmware(any(Firmware.class), any(ProgressCallback.class));
+
+        // Execute update and cancel it immediately
+        firmwareUpdateService.updateFirmware(THING1_UID, FW112_EN.getUID(), null);
+        firmwareUpdateService.cancelFirmwareUpdate(THING1_UID);
+
+        // Be sure that the cancel is executed before the completion of the update
+        waitForAssert(() -> {
+            verify(handler1, times(1)).cancel();
+        }, stepsTime * numberOfSteps, stepsTime);
+
+        assertThat(isUpdateFinished.get(), is(false));
+    }
 
     @Test(expected = IllegalArgumentException.class)
     public void cancelFirmwareUpdate_noFirmwareUpdateHandler() {
@@ -346,9 +388,10 @@ public class FirmwareUpdateServiceTest extends JavaTest {
 
     @Test
     public void testCancelFirmwareUpdate_takesLong() {
+        firmwareUpdateService.timeout = 50;
         FirmwareUpdateHandler firmwareUpdateHandler = mock(FirmwareUpdateHandler.class);
         doAnswer(invocation -> {
-            Thread.sleep(SafeMethodCaller.DEFAULT_TIMEOUT + 1000);
+            Thread.sleep(200);
             return null;
         }).when(firmwareUpdateHandler).cancel();
         doReturn(true).when(firmwareUpdateHandler).isUpdateExecutable();
@@ -624,7 +667,7 @@ public class FirmwareUpdateServiceTest extends JavaTest {
         });
 
         doAnswer(invocation -> {
-            Thread.sleep(10000);
+            Thread.sleep(200);
             return null;
         }).when(handler1).updateFirmware(any(Firmware.class), any(ProgressCallback.class));
 

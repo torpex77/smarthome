@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -67,6 +67,7 @@ public class WeatherUndergroundHandler extends BaseThingHandler {
             .collect(Collectors.toSet());
 
     private static final int DEFAULT_REFRESH_PERIOD = 30;
+    private static final int FETCH_TIMEOUT_MS = 30000;
 
     private LocaleProvider localeProvider;
 
@@ -217,7 +218,7 @@ public class WeatherUndergroundHandler extends BaseThingHandler {
             } else if (value instanceof String) {
                 state = new StringType(value.toString());
             } else if (value instanceof URL) {
-                state = HttpUtil.downloadImage(((URL) value).toExternalForm());
+                state = HttpUtil.downloadImage(((URL) value).toExternalForm(), FETCH_TIMEOUT_MS);
                 if (state == null) {
                     logger.debug("Failed to download the content of URL {}", ((URL) value).toExternalForm());
                     state = UnDefType.UNDEF;
@@ -277,7 +278,6 @@ public class WeatherUndergroundHandler extends BaseThingHandler {
         String statusDescr = null;
 
         try {
-
             // Build a valid URL for the Weather Underground service using
             // the requested features and the thing configuration settings
             WeatherUndergroundConfiguration config = getConfigAs(WeatherUndergroundConfiguration.class);
@@ -304,7 +304,7 @@ public class WeatherUndergroundHandler extends BaseThingHandler {
             // Run the HTTP request and get the JSON response from Weather Underground
             String response = null;
             try {
-                response = HttpUtil.executeUrl("GET", urlStr, 30 * 1000);
+                response = HttpUtil.executeUrl("GET", urlStr, FETCH_TIMEOUT_MS);
                 logger.debug("weatherData = {}", response);
             } catch (IllegalArgumentException e) {
                 // catch Illegal character in path at index XX: http://api.wunderground.com/...

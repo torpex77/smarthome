@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -17,12 +17,14 @@ import static org.eclipse.smarthome.binding.wemo.WemoBindingConstants.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URL;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -59,32 +61,33 @@ import org.slf4j.LoggerFactory;
  * @author Hans-Jörg Merk - Initial contribution; Added support for WeMo Insight energy measurement
  * @author Kai Kreuzer - some refactoring for performance and simplification
  * @author Stefan Bußweiler - Added new thing status handling
+ * @author Erdoan Hadzhiyusein - Adapted the class to work with the new DateTimeType
  */
 
 public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, DiscoveryListener {
 
     private final Logger logger = LoggerFactory.getLogger(WemoHandler.class);
 
-    public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Stream
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Stream
             .of(THING_TYPE_SOCKET, THING_TYPE_INSIGHT, THING_TYPE_LIGHTSWITCH, THING_TYPE_MOTION)
             .collect(Collectors.toSet());
 
     private Map<String, Boolean> subscriptionState = new HashMap<String, Boolean>();
 
-    private Map<String, String> stateMap = Collections.synchronizedMap(new HashMap<String, String>());
+    private final Map<String, String> stateMap = Collections.synchronizedMap(new HashMap<String, String>());
 
-    protected final static int SUBSCRIPTION_DURATION = 600;
+    protected static final int SUBSCRIPTION_DURATION = 600;
 
     private UpnpIOService service;
 
     /**
      * The default refresh interval in Seconds.
      */
-    private int DEFAULT_REFRESH_INTERVAL = 120;
+    private final int DEFAULT_REFRESH_INTERVAL = 120;
 
     private ScheduledFuture<?> refreshJob;
 
-    private Runnable refreshRunnable = new Runnable() {
+    private final Runnable refreshRunnable = new Runnable() {
 
         @Override
         public void run() {
@@ -95,15 +98,14 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
 
                 updateWemoState();
                 onSubscription();
-
             } catch (Exception e) {
                 logger.debug("Exception during poll : {}", e);
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
             }
         }
     };
 
     public WemoHandler(Thing thing, UpnpIOService upnpIOService) {
-
         super(thing);
 
         logger.debug("Creating a WemoHandler for thing '{}'", getThing().getUID());
@@ -113,12 +115,10 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
         } else {
             logger.debug("upnpIOService not set.");
         }
-
     }
 
     @Override
     public void initialize() {
-
         Configuration configuration = getConfig();
 
         if (configuration.get("udn") != null) {
@@ -129,7 +129,6 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
         } else {
             logger.debug("Cannot initalize WemoHandler. UDN not set.");
         }
-
     }
 
     @Override
@@ -177,9 +176,7 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
             }
         } else if (channelUID.getId().equals(CHANNEL_STATE)) {
             if (command instanceof OnOffType) {
-
                 try {
-
                     String binaryState = null;
 
                     if (command.equals(OnOffType.ON)) {
@@ -219,7 +216,6 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
 
     @Override
     public void onValueReceived(String variable, String value, String service) {
-
         logger.debug("Received pair '{}':'{}' (service '{}') for thing '{}'",
                 new Object[] { variable, value, service, this.getThing().getUID() });
 
@@ -231,7 +227,6 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
             String insightParams = stateMap.get("InsightParams");
 
             if (insightParams != null) {
-
                 String[] splitInsightParams = insightParams.split("\\|");
 
                 if (splitInsightParams[0] != null) {
@@ -251,9 +246,10 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
                     logger.error("Unable to parse lastChangedAt value '{}' for device '{}'; expected long",
                             splitInsightParams[1], getThing().getUID());
                 }
-                GregorianCalendar cal = new GregorianCalendar();
-                cal.setTimeInMillis(lastChangedAt);
-                State lastChangedAtState = new DateTimeType(cal);
+                ZonedDateTime zoned = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastChangedAt),
+                        TimeZone.getDefault().toZoneId());
+
+                State lastChangedAtState = new DateTimeType(zoned);
                 if (lastChangedAt != 0) {
                     logger.trace("New InsightParam lastChangedAt '{}' for device '{}' received", lastChangedAtState,
                             getThing().getUID());
@@ -333,7 +329,6 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
                     updateState(CHANNEL_STANDBYLIMIT, standByLimit);
                 }
             }
-
         } else {
             State state = stateMap.get("BinaryState").equals("0") ? OnOffType.OFF : OnOffType.ON;
 
@@ -434,7 +429,6 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
      *
      */
     protected void updateWemoState() {
-
         String action = "GetBinaryState";
         String variable = "BinaryState";
         String actionService = "basicevent";
@@ -491,7 +485,7 @@ public class WemoHandler extends BaseThingHandler implements UpnpIOParticipant, 
 
     @Override
     public Collection<ThingUID> removeOlderResults(DiscoveryService source, long timestamp,
-            Collection<ThingTypeUID> thingTypeUIDs) {
+            Collection<ThingTypeUID> thingTypeUIDs, ThingUID bridgeUID) {
         return Collections.emptyList();
     }
 

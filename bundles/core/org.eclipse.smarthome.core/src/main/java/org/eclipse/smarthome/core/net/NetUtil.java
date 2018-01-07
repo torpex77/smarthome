@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -73,20 +73,24 @@ public class NetUtil implements NetworkAddressService {
     public String getPrimaryIpv4HostAddress() {
         String primaryIP;
 
-        String[] addrString = primaryAddress.split("/");
-        if (addrString.length > 1) {
-            String ip = getIPv4inSubnet(addrString[0], addrString[1]);
-            if (ip == null) {
-                // an error has occurred, using first interface like nothing has been configured
-                LOGGER.warn("Invalid address '{}', will use first interface instead.", primaryAddress);
-                primaryIP = getFirstLocalIPv4Address();
+        if (primaryAddress != null) {
+            String[] addrString = primaryAddress.split("/");
+            if (addrString.length > 1) {
+                String ip = getIPv4inSubnet(addrString[0], addrString[1]);
+                if (ip == null) {
+                    // an error has occurred, using first interface like nothing has been configured
+                    LOGGER.warn("Invalid address '{}', will use first interface instead.", primaryAddress);
+                    primaryIP = getFirstLocalIPv4Address();
+                } else {
+                    primaryIP = ip;
+                }
             } else {
-                primaryIP = ip;
+                primaryIP = addrString[0];
             }
         } else {
-            primaryIP = addrString[0];
+            // we do not seem to have any network interfaces
+            primaryIP = null;
         }
-
         return primaryIP;
     }
 

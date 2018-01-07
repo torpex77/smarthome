@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -12,7 +12,8 @@
  */
 package org.eclipse.smarthome.ui.internal.items;
 
-import java.util.Calendar;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -89,6 +90,7 @@ import org.slf4j.LoggerFactory;
  * @author Kai Kreuzer - Initial contribution and API
  * @author Chris Jackson
  * @author Stefan Triller - Method to convert a state into something a sitemap entity can understand
+ * @author Erdoan Hadzhiyusein - Adapted the class to work with the new DateTimeType
  *
  */
 public class ItemUIRegistryImpl implements ItemUIRegistry {
@@ -362,7 +364,6 @@ public class ItemUIRegistryImpl implements ItemUIRegistry {
                                 }
                             }
                         }
-
                         // The following exception handling has been added to work around a Java bug with formatting
                         // numbers. See http://bugs.sun.com/view_bug.do?bug_id=6476425
                         // Without this catch, the whole sitemap, or page can not be displayed!
@@ -371,7 +372,7 @@ public class ItemUIRegistryImpl implements ItemUIRegistry {
                             formatPattern = ((Type) state).format(formatPattern);
                         } catch (IllegalArgumentException e) {
                             logger.warn("Exception while formatting value '{}' of item {} with format '{}': {}", state,
-                                    itemName, formatPattern, e);
+                                    itemName, formatPattern, e.getMessage());
                             formatPattern = new String("Err");
                         }
                     }
@@ -432,8 +433,9 @@ public class ItemUIRegistryImpl implements ItemUIRegistry {
         try {
             return String.format(undefinedFormatPattern, "-");
         } catch (Exception e) {
-            logger.warn("Exception while formatting undefined value [sourcePattern={}, targetPattern={}, {}]",
-                    formatPattern, undefinedFormatPattern, e);
+            logger.warn(
+                    "Exception while formatting undefined value [sourcePattern={}, targetPattern={}, exceptionMessage={}]",
+                    formatPattern, undefinedFormatPattern, e.getMessage());
             return "Err";
         }
     }
@@ -682,7 +684,8 @@ public class ItemUIRegistryImpl implements ItemUIRegistry {
                 logger.warn("Group does not specify an associated item - ignoring it.");
             }
         } catch (ItemNotFoundException e) {
-            logger.warn("Group '{}' could not be found.", group.getLabel(), e);
+            logger.warn("Dynamic group with label '{}' will be ignored, because its item '{}' does not exist.",
+                    group.getLabel(), itemName);
         }
         return children;
 
@@ -841,89 +844,13 @@ public class ItemUIRegistryImpl implements ItemUIRegistry {
             condition = Condition.fromString(matchCondition);
         }
 
-        if (DecimalType.class.isInstance(state)) {
-            try {
-                switch (condition) {
-                    case EQUAL:
-                        if (Double.parseDouble(state.toString()) == Double.parseDouble(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case LTE:
-                        if (Double.parseDouble(state.toString()) <= Double.parseDouble(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case GTE:
-                        if (Double.parseDouble(state.toString()) >= Double.parseDouble(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case GREATER:
-                        if (Double.parseDouble(state.toString()) > Double.parseDouble(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case LESS:
-                        if (Double.parseDouble(state.toString()) < Double.parseDouble(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case NOT:
-                    case NOTEQUAL:
-                        if (Double.parseDouble(state.toString()) != Double.parseDouble(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                }
-            } catch (NumberFormatException e) {
-                logger.debug("matchStateToValue: Decimal format exception: ", e);
-            }
-        } else if (state instanceof DateTimeType) {
-            Calendar val = ((DateTimeType) state).getCalendar();
-            Calendar now = Calendar.getInstance();
-            long secsDif = (now.getTimeInMillis() - val.getTimeInMillis()) / 1000;
-
-            try {
-                switch (condition) {
-                    case EQUAL:
-                        if (secsDif == Integer.parseInt(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case LTE:
-                        if (secsDif <= Integer.parseInt(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case GTE:
-                        if (secsDif >= Integer.parseInt(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case GREATER:
-                        if (secsDif > Integer.parseInt(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case LESS:
-                        if (secsDif < Integer.parseInt(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                    case NOT:
-                    case NOTEQUAL:
-                        if (secsDif != Integer.parseInt(unquotedValue)) {
-                            matched = true;
-                        }
-                        break;
-                }
-            } catch (NumberFormatException e) {
-                logger.debug("matchStateToValue: Decimal format exception: ", e);
-            }
-        } else {
-            // Strings only allow = and !=
+        if (unquotedValue.equals(UnDefType.NULL.toString()) || unquotedValue.equals(UnDefType.UNDEF.toString())) {
             switch (condition) {
+                case EQUAL:
+                    if (unquotedValue.equals(state.toString())) {
+                        matched = true;
+                    }
+                    break;
                 case NOT:
                 case NOTEQUAL:
                     if (!unquotedValue.equals(state.toString())) {
@@ -931,10 +858,104 @@ public class ItemUIRegistryImpl implements ItemUIRegistry {
                     }
                     break;
                 default:
-                    if (unquotedValue.equals(state.toString())) {
-                        matched = true;
-                    }
                     break;
+            }
+        } else {
+            if (DecimalType.class.isInstance(state)) {
+                try {
+                    switch (condition) {
+                        case EQUAL:
+                            if (Double.parseDouble(state.toString()) == Double.parseDouble(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case LTE:
+                            if (Double.parseDouble(state.toString()) <= Double.parseDouble(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case GTE:
+                            if (Double.parseDouble(state.toString()) >= Double.parseDouble(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case GREATER:
+                            if (Double.parseDouble(state.toString()) > Double.parseDouble(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case LESS:
+                            if (Double.parseDouble(state.toString()) < Double.parseDouble(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case NOT:
+                        case NOTEQUAL:
+                            if (Double.parseDouble(state.toString()) != Double.parseDouble(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                    }
+                } catch (NumberFormatException e) {
+                    logger.debug("matchStateToValue: Decimal format exception: ", e);
+                }
+            } else if (state instanceof DateTimeType) {
+                ZonedDateTime val = ((DateTimeType) state).getZonedDateTime();
+                ZonedDateTime now = ZonedDateTime.now();
+                long secsDif = ChronoUnit.SECONDS.between(val, now);
+
+                try {
+                    switch (condition) {
+                        case EQUAL:
+                            if (secsDif == Integer.parseInt(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case LTE:
+                            if (secsDif <= Integer.parseInt(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case GTE:
+                            if (secsDif >= Integer.parseInt(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case GREATER:
+                            if (secsDif > Integer.parseInt(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case LESS:
+                            if (secsDif < Integer.parseInt(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                        case NOT:
+                        case NOTEQUAL:
+                            if (secsDif != Integer.parseInt(unquotedValue)) {
+                                matched = true;
+                            }
+                            break;
+                    }
+                } catch (NumberFormatException e) {
+                    logger.debug("matchStateToValue: Decimal format exception: ", e);
+                }
+            } else {
+                // Strings only allow = and !=
+                switch (condition) {
+                    case NOT:
+                    case NOTEQUAL:
+                        if (!unquotedValue.equals(state.toString())) {
+                            matched = true;
+                        }
+                        break;
+                    default:
+                        if (unquotedValue.equals(state.toString())) {
+                            matched = true;
+                        }
+                        break;
+                }
             }
         }
 

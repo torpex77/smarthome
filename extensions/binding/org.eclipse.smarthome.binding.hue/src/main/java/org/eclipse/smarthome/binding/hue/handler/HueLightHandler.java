@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -67,12 +67,12 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HueLightHandler extends BaseThingHandler implements LightStatusListener {
 
-    public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Stream.of(THING_TYPE_COLOR_LIGHT,
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Stream.of(THING_TYPE_COLOR_LIGHT,
             THING_TYPE_COLOR_TEMPERATURE_LIGHT, THING_TYPE_DIMMABLE_LIGHT, THING_TYPE_EXTENDED_COLOR_LIGHT,
             THING_TYPE_ON_OFF_LIGHT, THING_TYPE_ON_OFF_PLUG, THING_TYPE_DIMMABLE_PLUG).collect(Collectors.toSet());
 
     // @formatter:off
-    private final static Map<String, List<String>> VENDOR_MODEL_MAP = Stream.of(
+    private static final Map<String, List<String>> VENDOR_MODEL_MAP = Stream.of(
             new SimpleEntry<>("Philips",
                     Arrays.asList("LCT001", "LCT002", "LCT003", "LCT007", "LLC001", "LLC006", "LLC007", "LLC010",
                             "LLC011", "LLC012", "LLC013", "LLC020", "LST001", "LST002", "LWB004", "LWB006", "LWB007",
@@ -82,7 +82,7 @@ public class HueLightHandler extends BaseThingHandler implements LightStatusList
         .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
     // @formatter:on
 
-    private final static String OSRAM_PAR16_50_TW_MODEL_ID = "PAR16_50_TW";
+    private static final String OSRAM_PAR16_50_TW_MODEL_ID = "PAR16_50_TW";
 
     public static final String NORMALIZE_ID_REGEX = "[^a-zA-Z0-9_]";
 
@@ -151,7 +151,6 @@ public class HueLightHandler extends BaseThingHandler implements LightStatusList
                 }
                 updateProperty(LIGHT_UNIQUE_ID, fullLight.getUniqueID());
                 isOsramPar16 = OSRAM_PAR16_50_TW_MODEL_ID.equals(modelId);
-                updateThing(thing);
                 propertiesInitializedSuccessfully = true;
             }
         }
@@ -189,7 +188,6 @@ public class HueLightHandler extends BaseThingHandler implements LightStatusList
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-
         HueBridgeHandler hueBridge = getHueBridgeHandler();
         if (hueBridge == null) {
             logger.warn("hue bridge handler not found. Cannot handle command without bridge.");
@@ -417,7 +415,6 @@ public class HueLightHandler extends BaseThingHandler implements LightStatusList
             updateState(CHANNEL_ALERT, stringType);
             scheduleAlertStateRestore(stringType);
         }
-
     }
 
     @Override

@@ -6,7 +6,7 @@ Bundle-Name: Eclipse SmartHome Core
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-SymbolicName: org.eclipse.smarthome.core
 Bundle-Vendor: Eclipse.org/SmartHome
-Bundle-Version: 0.9.0.qualifier
+Bundle-Version: 0.10.0.qualifier
 Export-Package: 
  org.eclipse.smarthome.core.auth,
  org.eclipse.smarthome.core.binding,
@@ -35,7 +35,6 @@ Ignore-Package: org.eclipse.smarthome.core.internal.items,org.eclipse.sm
  arthome.core.internal,org.eclipse.smarthome.core.internal.events,org.ec
  lipse.smarthome.core.internal.logging
 Import-Package: 
- com.google.common.base,
  com.google.common.collect,
  com.google.gson,
  org.apache.commons.io,
@@ -64,7 +63,6 @@ Import-Package:
  org.eclipse.smarthome.core.types,
  org.osgi.framework,
  org.osgi.service.component,
- org.osgi.service.component.annotations;resolution:=optional,
  org.osgi.service.event,
  org.osgi.service.packageadmin,
  org.osgi.util.tracker,

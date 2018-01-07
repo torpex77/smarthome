@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -76,7 +76,7 @@ public class HueBridgeHandler extends ConfigStatusBridgeHandler {
 
     private static final String LIGHT_STATE_CHANGED = "changed";
 
-    public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Collections.singleton(THING_TYPE_BRIDGE);
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Collections.singleton(THING_TYPE_BRIDGE);
 
     private static final int DEFAULT_POLLING_INTERVAL = 10; // in seconds
 
@@ -289,7 +289,6 @@ public class HueBridgeHandler extends ConfigStatusBridgeHandler {
                 properties.put(Thing.PROPERTY_SERIAL_NUMBER, config.getMACAddress().replaceAll(":", "").toLowerCase());
                 properties.put(Thing.PROPERTY_FIRMWARE_VERSION, config.getSoftwareVersion());
                 updateProperties(properties);
-                updateThing(thing);
                 propertiesInitializedSuccessfully = true;
             }
         }
@@ -487,7 +486,6 @@ public class HueBridgeHandler extends ConfigStatusBridgeHandler {
                         throw new IllegalArgumentException(
                                 "Could not notify lightStatusListeners for unknown event type " + type);
                 }
-
             } catch (Exception e) {
                 logger.error("An exception occurred while calling the BridgeHeartbeatListener", e);
             }

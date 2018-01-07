@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -493,14 +493,10 @@ public class HttpUtil {
 
             rawData = new RawType(data, contentType);
 
-        } catch (IOException e) {
-            rawData = null;
-        }
-        if (rawData == null) {
-            logger.debug("Media download failed (URL {})", url);
-        } else {
             logger.debug("Media downloaded: size {} type {} (URL {})", rawData.getBytes().length, rawData.getMimeType(),
                     url);
+        } catch (IOException e) {
+            logger.debug("Media download failed (URL {}) : {}", url, e.getMessage());
         }
         return rawData;
     }

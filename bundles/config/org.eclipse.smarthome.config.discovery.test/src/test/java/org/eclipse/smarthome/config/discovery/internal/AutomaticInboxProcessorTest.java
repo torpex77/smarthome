@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -50,8 +50,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
-import com.google.common.collect.ImmutableMap;
-
 /**
  * @author Andre Fuechsel - Initial contribution
  */
@@ -79,13 +77,10 @@ public class AutomaticInboxProcessorTest {
     private static final ThingType THING_TYPE3 = ThingTypeBuilder.instance(THING_TYPE_UID3, "label").isListed(true)
             .withRepresentationProperty(OTHER_KEY).build();
 
-    private final static Map<String, String> THING_PROPERTIES = new ImmutableMap.Builder<String, String>()
-            .put(DEVICE_ID_KEY, DEVICE_ID).build();
-    private final static Map<String, String> OTHER_THING_PROPERTIES = new ImmutableMap.Builder<String, String>()
-            .put(OTHER_KEY, OTHER_VALUE).build();
+    private final static Map<String, String> THING_PROPERTIES = Collections.singletonMap(DEVICE_ID_KEY, DEVICE_ID);
+    private final static Map<String, String> OTHER_THING_PROPERTIES = Collections.singletonMap(OTHER_KEY, OTHER_VALUE);
 
-    private final static Configuration CONFIG = new Configuration(
-            new ImmutableMap.Builder<String, Object>().put(CONFIG_KEY, CONFIG_VALUE).build());
+    private final static Configuration CONFIG = new Configuration(Collections.singletonMap(CONFIG_KEY, CONFIG_VALUE));
 
     private AutomaticInboxProcessor inboxAutoIgnore;
     private PersistentInbox inbox;
@@ -128,7 +123,7 @@ public class AutomaticInboxProcessorTest {
         when(thing.getUID()).thenReturn(THING_UID);
 
         when(thing2.getConfiguration()).thenReturn(CONFIG);
-        when(thing2.getThingTypeUID()).thenReturn(THING_TYPE_UID2);
+        when(thing2.getThingTypeUID()).thenReturn(THING_TYPE_UID);
         when(thing2.getProperties()).thenReturn(THING_PROPERTIES);
         when(thing2.getStatus()).thenReturn(ThingStatus.ONLINE);
         when(thing2.getUID()).thenReturn(THING_UID2);
@@ -328,8 +323,8 @@ public class AutomaticInboxProcessorTest {
 
     @Test
     public void testThingWithConfigWentOnline() {
-        inbox.add(DiscoveryResultBuilder.create(THING_UID2).withProperty(CONFIG_KEY, CONFIG_VALUE)
-                .withRepresentationProperty(CONFIG_KEY).build());
+        inbox.add(DiscoveryResultBuilder.create(THING_UID2).withProperty(OTHER_KEY, OTHER_VALUE)
+                .withRepresentationProperty(OTHER_KEY).build());
 
         List<DiscoveryResult> results = inbox.stream().filter(withFlag(DiscoveryResultFlag.NEW))
                 .collect(Collectors.toList());
@@ -357,8 +352,8 @@ public class AutomaticInboxProcessorTest {
         when(thingRegistry.get(THING_UID2)).thenReturn(thing2);
         when(thingRegistry.stream()).thenReturn(Stream.of(thing2));
 
-        inbox.add(DiscoveryResultBuilder.create(THING_UID).withProperty(CONFIG_KEY, CONFIG_VALUE)
-                .withRepresentationProperty(CONFIG_KEY).build());
+        inbox.add(DiscoveryResultBuilder.create(THING_UID).withProperty(OTHER_KEY, OTHER_VALUE)
+                .withRepresentationProperty(OTHER_KEY).build());
 
         List<DiscoveryResult> results = inbox.stream().filter(withFlag(DiscoveryResultFlag.NEW))
                 .collect(Collectors.toList());
@@ -370,8 +365,8 @@ public class AutomaticInboxProcessorTest {
 
     @Test
     public void testThingWithConfigIsBeingRemoved() {
-        inbox.add(DiscoveryResultBuilder.create(THING_UID2).withProperty(CONFIG_KEY, CONFIG_VALUE)
-                .withRepresentationProperty(CONFIG_KEY).build());
+        inbox.add(DiscoveryResultBuilder.create(THING_UID2).withProperty(OTHER_KEY, OTHER_VALUE)
+                .withRepresentationProperty(OTHER_KEY).build());
 
         inbox.setFlag(THING_UID2, DiscoveryResultFlag.IGNORED);
         List<DiscoveryResult> results = inbox.stream().filter(withFlag(DiscoveryResultFlag.IGNORED))

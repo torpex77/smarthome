@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -53,10 +53,10 @@ public class HueLightDiscoveryService extends AbstractDiscoveryService implement
 
     private final Logger logger = LoggerFactory.getLogger(HueLightDiscoveryService.class);
 
-    private final static int SEARCH_TIME = 60;
+    private static final int SEARCH_TIME = 60;
 
     // @formatter:off
-    private final static Map<String, @Nullable String> TYPE_TO_ZIGBEE_ID_MAP = Stream.of(
+    private static final Map<String, @Nullable String> TYPE_TO_ZIGBEE_ID_MAP = Stream.of(
             new SimpleEntry<>("on_off_light", "0000"),
             new SimpleEntry<>("on_off_plug_in_unit", "0010"),
             new SimpleEntry<>("dimmable_light", "0100"),
@@ -80,7 +80,7 @@ public class HueLightDiscoveryService extends AbstractDiscoveryService implement
 
     @Override
     public void deactivate() {
-        removeOlderResults(new Date().getTime());
+        removeOlderResults(new Date().getTime(), hueBridgeHandler.getThing().getUID());
         hueBridgeHandler.unregisterLightStatusListener(this);
     }
 

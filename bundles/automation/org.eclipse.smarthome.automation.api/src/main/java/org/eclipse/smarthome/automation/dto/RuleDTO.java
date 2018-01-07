@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.smarthome.automation.Visibility;
-import org.eclipse.smarthome.config.core.ConfigDescriptionParameter;
+import org.eclipse.smarthome.config.core.dto.ConfigDescriptionParameterDTO;
 
 /**
  * This is a data transfer object that is used to serialize rules.
@@ -30,7 +30,7 @@ public class RuleDTO {
     public List<ConditionDTO> conditions;
     public List<ActionDTO> actions;
     public Map<String, Object> configuration;
-    public List<ConfigDescriptionParameter> configDescriptions;
+    public List<ConfigDescriptionParameterDTO> configDescriptions;
     public String templateUID;
     public String uid;
     public String name;

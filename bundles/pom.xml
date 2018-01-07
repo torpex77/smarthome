@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.eclipse.smarthome</groupId>
     <artifactId>smarthome</artifactId>
-    <version>0.9.0-SNAPSHOT</version>
+    <version>0.10.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -21,7 +21,6 @@
     <module>config</module>
     <module>core</module>
     <module>automation</module>
-    <module>designer</module>
     <module>io</module>
     <module>model</module>
     <module>ui</module>

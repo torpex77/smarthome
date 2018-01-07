@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -93,6 +93,9 @@ public class HueLightDiscoveryServiceOSGiTest extends AbstractHueOSGiTest {
     @After
     public void cleanUp() {
         thingRegistry.remove(BRIDGE_THING_UID);
+        waitForAssert(() -> {
+            assertNull(getService(DiscoveryService.class, HueLightDiscoveryService.class));
+        });
     }
 
     private void registerDiscoveryListener(DiscoveryListener discoveryListener) {
@@ -128,7 +131,7 @@ public class HueLightDiscoveryServiceOSGiTest extends AbstractHueOSGiTest {
 
             @Override
             public Collection<ThingUID> removeOlderResults(DiscoveryService source, long timestamp,
-                    Collection<ThingTypeUID> thingTypeUIDs) {
+                    Collection<ThingTypeUID> thingTypeUIDs, ThingUID bridgeUID) {
                 return Collections.emptyList();
             }
         });

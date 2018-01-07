@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -157,8 +157,10 @@ public abstract class Packet {
     }
 
     public void setSequence(int sequence) {
-        if (sequence < 255) {
+        if (0 <= sequence && sequence < 256) {
             this.sequence = sequence;
+        } else {
+            throw new IllegalArgumentException("Sequence number '" + sequence + "' is not in range [0, 255]");
         }
     }
 

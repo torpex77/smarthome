@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -20,8 +20,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.smarthome.core.common.SafeCaller;
 import org.eclipse.smarthome.core.common.registry.RegistryChangeListener;
 import org.eclipse.smarthome.core.events.Event;
 import org.eclipse.smarthome.core.events.EventFilter;
@@ -37,6 +39,7 @@ import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingRegistry;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.UID;
+import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.thing.events.ChannelTriggeredEvent;
 import org.eclipse.smarthome.core.thing.events.ThingEventFactory;
 import org.eclipse.smarthome.core.thing.internal.link.ItemChannelLinkConfigDescriptionProvider;
@@ -71,6 +74,9 @@ import org.slf4j.LoggerFactory;
 @Component(service = { EventSubscriber.class, CommunicationManager.class }, immediate = true)
 public class CommunicationManager implements EventSubscriber, RegistryChangeListener<ItemChannelLink> {
 
+    // the timeout to use for any item event processing
+    public static final long THINGHANDLER_EVENT_TIMEOUT = TimeUnit.SECONDS.toMillis(30);
+
     private static final Set<String> SUBSCRIBED_EVENT_TYPES = Collections.unmodifiableSet(
             new HashSet<>(Arrays.asList(ItemStateEvent.TYPE, ItemCommandEvent.TYPE, ChannelTriggeredEvent.TYPE)));
 
@@ -81,6 +87,7 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
     private ThingRegistry thingRegistry;
     private ItemRegistry itemRegistry;
     private EventPublisher eventPublisher;
+    private SafeCaller safeCaller;
 
     // link UID -> profile
     private final Map<String, Profile> profiles = new ConcurrentHashMap<>();
@@ -134,7 +141,7 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
     }
 
     private ProfileCallback createCallback(ItemChannelLink link) {
-        return new ProfileCallbackImpl(eventPublisher, link, thingUID -> getThing(thingUID),
+        return new ProfileCallbackImpl(eventPublisher, safeCaller, link, thingUID -> getThing(thingUID),
                 itemName -> getItem(itemName));
     }
 
@@ -151,10 +158,8 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
                 return null;
             }
 
-            if (profileTypeUID == null) {
-                // ask advisors
-                profileTypeUID = getAdvice(link, item, channel);
-            }
+            // ask advisors
+            profileTypeUID = getAdvice(link, item, channel);
 
             if (profileTypeUID == null) {
                 // ask default advisor
@@ -240,9 +245,15 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
         }).forEach(link -> {
             ChannelUID channelUID = link.getLinkedUID();
             Thing thing = getThing(channelUID.getThingUID());
-            Profile profile = getProfile(link, item, thing);
-            if (profile instanceof StateProfile) {
-                ((StateProfile) profile).onCommandFromItem(command);
+            if (thing != null) {
+                ThingHandler handler = thing.getHandler();
+                if (handler != null) {
+                    Profile profile = getProfile(link, item, thing);
+                    if (profile instanceof StateProfile) {
+                        safeCaller.create(((StateProfile) profile)).withAsync().withIdentifier(thing)
+                                .withTimeout(THINGHANDLER_EVENT_TIMEOUT).build().onCommandFromItem(command);
+                    }
+                }
             }
         });
     }
@@ -265,8 +276,14 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
         }).forEach(link -> {
             ChannelUID channelUID = link.getLinkedUID();
             Thing thing = getThing(channelUID.getThingUID());
-            Profile profile = getProfile(link, item, thing);
-            profile.onStateUpdateFromItem(newState);
+            if (thing != null) {
+                ThingHandler handler = thing.getHandler();
+                if (handler != null) {
+                    Profile profile = getProfile(link, item, thing);
+                    safeCaller.create(profile).withAsync().withIdentifier(handler)
+                            .withTimeout(THINGHANDLER_EVENT_TIMEOUT).build().onStateUpdateFromItem(newState);
+                }
+            }
         });
     }
 
@@ -420,6 +437,15 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
 
     protected void unsetDefaultProfileFactory(SystemProfileFactory defaultProfileFactory) {
         this.defaultProfileFactory = null;
+    }
+
+    @Reference
+    protected void setSafeCaller(SafeCaller safeCaller) {
+        this.safeCaller = safeCaller;
+    }
+
+    protected void unsetSafeCaller(SafeCaller safeCaller) {
+        this.safeCaller = null;
     }
 
     private static class NoOpProfile implements Profile {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -12,6 +12,8 @@
  */
 package org.eclipse.smarthome.core.thing.internal;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -24,8 +26,6 @@ import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableList;
-
 /**
  *
  * @author Denis Nobel - Initial contribution
@@ -34,12 +34,6 @@ public class BridgeImpl extends ThingImpl implements Bridge {
 
     private transient List<Thing> things = new CopyOnWriteArrayList<>();
     private transient Logger logger = LoggerFactory.getLogger(BridgeImpl.class);
-
-    /**
-     * Package protected default constructor to allow reflective instantiation.
-     */
-    BridgeImpl() {
-    }
 
     public BridgeImpl(ThingTypeUID thingTypeUID, String bridgeId) {
         super(thingTypeUID, bridgeId);
@@ -74,7 +68,7 @@ public class BridgeImpl extends ThingImpl implements Bridge {
 
     @Override
     public List<Thing> getThings() {
-        return ImmutableList.copyOf(things);
+        return Collections.unmodifiableList(new ArrayList<>(things));
     }
 
     @Override

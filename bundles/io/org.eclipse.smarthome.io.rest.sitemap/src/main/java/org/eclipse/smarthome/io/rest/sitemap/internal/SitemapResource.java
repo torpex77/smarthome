@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -210,13 +210,16 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
             }
         }
 
+        boolean timeout = false;
         if (headers.getRequestHeader("X-Atmosphere-Transport") != null) {
             // Make the REST-API pseudo-compatible with openHAB 1.x
             // The client asks Atmosphere for server push functionality,
             // so we do a simply listening for changes on the appropriate items
-            blockUnlessChangeOccurs(sitemapname, pageId);
+            // The blocking has a timeout of 30 seconds. If this timeout is reached,
+            // we notice this information in the response object.
+            timeout = blockUnlessChangeOccurs(sitemapname, pageId);
         }
-        Object responseObject = getPageBean(sitemapname, pageId, uriInfo.getBaseUriBuilder().build(), locale);
+        PageDTO responseObject = getPageBean(sitemapname, pageId, uriInfo.getBaseUriBuilder().build(), locale, timeout);
         return Response.ok(responseObject).build();
     }
 
@@ -271,31 +274,31 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
         return eventOutput;
     }
 
-    private PageDTO getPageBean(String sitemapName, String pageId, URI uri, Locale locale) {
+    private PageDTO getPageBean(String sitemapName, String pageId, URI uri, Locale locale, boolean timeout) {
         Sitemap sitemap = getSitemap(sitemapName);
         if (sitemap != null) {
             if (pageId.equals(sitemap.getName())) {
                 EList<Widget> children = itemUIRegistry.getChildren(sitemap);
                 return createPageBean(sitemapName, sitemap.getLabel(), sitemap.getIcon(), sitemap.getName(), children,
-                        false, isLeaf(children), uri, locale);
+                        false, isLeaf(children), uri, locale, timeout);
             } else {
                 Widget pageWidget = itemUIRegistry.getWidget(sitemap, pageId);
                 if (pageWidget instanceof LinkableWidget) {
                     EList<Widget> children = itemUIRegistry.getChildren((LinkableWidget) pageWidget);
                     PageDTO pageBean = createPageBean(sitemapName, itemUIRegistry.getLabel(pageWidget),
                             itemUIRegistry.getCategory(pageWidget), pageId, children, false, isLeaf(children), uri,
-                            locale);
+                            locale, timeout);
                     EObject parentPage = pageWidget.eContainer();
                     while (parentPage instanceof Frame) {
                         parentPage = parentPage.eContainer();
                     }
                     if (parentPage instanceof Widget) {
                         String parentId = itemUIRegistry.getWidgetId((Widget) parentPage);
-                        pageBean.parent = getPageBean(sitemapName, parentId, uri, locale);
+                        pageBean.parent = getPageBean(sitemapName, parentId, uri, locale, timeout);
                         pageBean.parent.widgets = null;
                         pageBean.parent.parent = null;
                     } else if (parentPage instanceof Sitemap) {
-                        pageBean.parent = getPageBean(sitemapName, sitemap.getName(), uri, locale);
+                        pageBean.parent = getPageBean(sitemapName, sitemap.getName(), uri, locale, timeout);
                         pageBean.parent.widgets = null;
                     }
                     return pageBean;
@@ -305,10 +308,9 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
                             logger.debug("Received HTTP GET request at '{}' for the unknown page id '{}'.", uri,
                                     pageId);
                         } else {
-                            logger.debug(
-                                    "Received HTTP GET request at '{}' for the page id '{}'. "
-                                            + "This id refers to a non-linkable widget and is therefore no valid page id.",
-                                    uri, pageId);
+                            logger.debug("Received HTTP GET request at '{}' for the page id '{}'. "
+                                    + "This id refers to a non-linkable widget and is therefore no valid page id.", uri,
+                                    pageId);
                         }
                     }
                     throw new WebApplicationException(404);
@@ -361,27 +363,26 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
 
         bean.link = UriBuilder.fromUri(uri).path(SitemapResource.PATH_SITEMAPS).path(bean.name).build().toASCIIString();
         bean.homepage = createPageBean(sitemap.getName(), sitemap.getLabel(), sitemap.getIcon(), sitemap.getName(),
-                itemUIRegistry.getChildren(sitemap), true, false, uri, locale);
+                itemUIRegistry.getChildren(sitemap), true, false, uri, locale, false);
         return bean;
     }
 
     private PageDTO createPageBean(String sitemapName, String title, String icon, String pageId, EList<Widget> children,
-            boolean drillDown, boolean isLeaf, URI uri, Locale locale) {
+            boolean drillDown, boolean isLeaf, URI uri, Locale locale, boolean timeout) {
         PageDTO bean = new PageDTO();
+        bean.timeout = timeout;
         bean.id = pageId;
         bean.title = title;
         bean.icon = icon;
         bean.leaf = isLeaf;
         bean.link = UriBuilder.fromUri(uri).path(PATH_SITEMAPS).path(sitemapName).path(pageId).build().toASCIIString();
         if (children != null) {
-            int cntWidget = 0;
             for (Widget widget : children) {
-                String widgetId = pageId + "_" + cntWidget;
+                String widgetId = itemUIRegistry.getWidgetId(widget);
                 WidgetDTO subWidget = createWidgetBean(sitemapName, widget, drillDown, uri, widgetId, locale);
                 if (subWidget != null) {
                     bean.widgets.add(subWidget);
                 }
-                cntWidget++;
             }
         } else {
             bean.widgets = null;
@@ -417,21 +418,18 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
             LinkableWidget linkableWidget = (LinkableWidget) widget;
             EList<Widget> children = itemUIRegistry.getChildren(linkableWidget);
             if (widget instanceof Frame) {
-                int cntWidget = 0;
-                String wID = widgetId;
                 for (Widget child : children) {
-                    wID += "_" + cntWidget;
+                    String wID = itemUIRegistry.getWidgetId(child);
                     WidgetDTO subWidget = createWidgetBean(sitemapName, child, drillDown, uri, wID, locale);
                     if (subWidget != null) {
                         bean.widgets.add(subWidget);
-                        cntWidget++;
                     }
                 }
             } else if (children.size() > 0) {
                 String pageName = itemUIRegistry.getWidgetId(linkableWidget);
                 bean.linkedPage = createPageBean(sitemapName, itemUIRegistry.getLabel(widget),
                         itemUIRegistry.getCategory(widget), pageName, drillDown ? children : null, drillDown,
-                        isLeaf(children), uri, locale);
+                        isLeaf(children), uri, locale, false);
             }
         }
         if (widget instanceof Switch) {
@@ -544,20 +542,22 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
         return null;
     }
 
-    private void blockUnlessChangeOccurs(String sitemapname, String pageId) {
+    private boolean blockUnlessChangeOccurs(String sitemapname, String pageId) {
+        boolean timeout = false;
         Sitemap sitemap = getSitemap(sitemapname);
         if (sitemap != null) {
             if (pageId.equals(sitemap.getName())) {
                 EList<Widget> children = itemUIRegistry.getChildren(sitemap);
-                waitForChanges(children);
+                timeout = waitForChanges(children);
             } else {
                 Widget pageWidget = itemUIRegistry.getWidget(sitemap, pageId);
                 if (pageWidget instanceof LinkableWidget) {
                     EList<Widget> children = itemUIRegistry.getChildren((LinkableWidget) pageWidget);
-                    waitForChanges(children);
+                    timeout = waitForChanges(children);
                 }
             }
         }
+        return timeout;
     }
 
     /**
@@ -566,6 +566,7 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
      *
      * @param widgets
      *            the widgets of the page to observe
+     * @return true if the timeout is reached
      */
     private boolean waitForChanges(EList<Widget> widgets) {
         long startTime = (new Date()).getTime();
@@ -588,7 +589,7 @@ public class SitemapResource implements RESTResource, SitemapSubscriptionCallbac
         for (GenericItem item : items) {
             item.removeStateChangeListener(listener);
         }
-        return !timeout;
+        return timeout;
     }
 
     /**

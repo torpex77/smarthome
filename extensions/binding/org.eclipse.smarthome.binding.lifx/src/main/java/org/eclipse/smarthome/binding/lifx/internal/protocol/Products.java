@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -44,8 +44,8 @@ public enum Products {
     LPA19_2(1, 45, "LIFX+ A19", true, true, false),
     LPBR30_2(1, 46, "LIFX+ BR30", true, true, false),
     LM(1, 49, "LIFX Mini", true, false, false),
-    LMW(1, 50, "LIFX Mini White", false, false, false),
-    LMWDD(1, 51, "LIFX Mini Day and Dusk", false, false, false),
+    LMDD(1, 50, "LIFX Mini Day and Dusk", false, false, false),
+    LMW(1, 51, "LIFX Mini White", false, false, false),
     LGU10(1, 52, "LIFX GU10", true, false, false);
 
     private final long vendorID;

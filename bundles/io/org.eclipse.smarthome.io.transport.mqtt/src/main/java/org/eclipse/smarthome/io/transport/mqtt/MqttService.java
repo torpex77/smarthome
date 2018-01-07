@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -46,8 +46,9 @@ import org.slf4j.LoggerFactory;
  * @author Davy Vanherbergen
  * @author Markus Rathgeb - Synchronize access to broker connections
  */
-@Component(immediate = true, service = { MqttService.class }, configurationPid = {
-        "org.eclipse.smarthome.mqtt" }, property = { "service.pid=org.eclipse.smarthome.mqtt" })
+@Component(immediate = true, service = {
+        MqttService.class }, configurationPid = "org.eclipse.smarthome.mqtt", property = {
+                "service.pid=org.eclipse.smarthome.mqtt" })
 @NonNullByDefault
 public class MqttService {
     private static final String NAME_PROPERTY = "name";

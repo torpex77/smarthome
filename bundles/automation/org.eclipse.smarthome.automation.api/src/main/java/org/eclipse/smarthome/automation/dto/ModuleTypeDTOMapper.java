@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -13,6 +13,7 @@
 package org.eclipse.smarthome.automation.dto;
 
 import org.eclipse.smarthome.automation.type.ModuleType;
+import org.eclipse.smarthome.config.core.dto.ConfigDescriptionDTOMapper;
 
 /**
  * This is a utility class to convert between the respective object and its DTO.
@@ -27,7 +28,6 @@ public class ModuleTypeDTOMapper {
         to.tags = from.getTags();
         to.label = from.getLabel();
         to.description = from.getDescription();
-        to.configDescriptions = from.getConfigurationDescriptions();
+        to.configDescriptions = ConfigDescriptionDTOMapper.mapParameters(from.getConfigurationDescriptions());
     }
-
 }

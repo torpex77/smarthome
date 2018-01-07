@@ -9,7 +9,7 @@
 
   <groupId>org.eclipse.smarthome</groupId>
   <artifactId>smarthome</artifactId>
-  <version>0.9.0-SNAPSHOT</version>
+  <version>0.10.0-SNAPSHOT</version>
 
   <name>Eclipse SmartHome</name>
 
@@ -351,7 +351,7 @@
             </excludes>
             <useDefaultExcludes>true</useDefaultExcludes>
             <properties>
-              <year>2017</year>
+              <year>2018</year>
             </properties>
             <encoding>UTF-8</encoding>
           </configuration>

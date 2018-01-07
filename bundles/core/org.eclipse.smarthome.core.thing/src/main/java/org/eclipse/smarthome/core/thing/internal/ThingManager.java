@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2017 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -29,7 +29,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -37,7 +36,7 @@ import org.eclipse.smarthome.config.core.ConfigDescription;
 import org.eclipse.smarthome.config.core.ConfigDescriptionParameter;
 import org.eclipse.smarthome.config.core.ConfigDescriptionRegistry;
 import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.common.SafeMethodCaller;
+import org.eclipse.smarthome.core.common.SafeCaller;
 import org.eclipse.smarthome.core.common.ThreadPoolManager;
 import org.eclipse.smarthome.core.common.registry.ManagedProvider;
 import org.eclipse.smarthome.core.common.registry.Provider;
@@ -81,7 +80,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 
@@ -110,7 +108,7 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
     private static final String THING_MANAGER_THREADPOOL_NAME = "thingManager";
     private static final String XML_THING_TYPE = "esh.xmlThingTypes";
 
-    private Logger logger = LoggerFactory.getLogger(ThingManager.class);
+    private final Logger logger = LoggerFactory.getLogger(ThingManager.class);
 
     private final ScheduledExecutorService scheduler = ThreadPoolManager
             .getScheduledPool(THING_MANAGER_THREADPOOL_NAME);
@@ -119,9 +117,9 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
 
     private CommunicationManager communicationManager;
 
-    private List<ThingHandlerFactory> thingHandlerFactories = new CopyOnWriteArrayList<>();
+    private final List<ThingHandlerFactory> thingHandlerFactories = new CopyOnWriteArrayList<>();
 
-    private Map<ThingUID, ThingHandler> thingHandlers = new ConcurrentHashMap<>();
+    private final Map<ThingUID, ThingHandler> thingHandlers = new ConcurrentHashMap<>();
 
     private final SetMultimap<ThingHandlerFactory, ThingHandler> thingHandlersByFactory = Multimaps
             .synchronizedSetMultimap(HashMultimap.<ThingHandlerFactory, ThingHandler> create());
@@ -130,9 +128,11 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
 
     private ThingStatusInfoI18nLocalizationService thingStatusInfoI18nLocalizationService;
 
-    private Map<ThingUID, Lock> thingLocks = new HashMap<>();
+    private final Map<ThingUID, Lock> thingLocks = new HashMap<>();
+    private final Set<String> loadedXmlThingTypes = new CopyOnWriteArraySet<>();
+    private SafeCaller safeCaller;
 
-    private ThingHandlerCallback thingHandlerCallback = new ThingHandlerCallback() {
+    private final ThingHandlerCallback thingHandlerCallback = new ThingHandlerCallback() {
 
         @Override
         public void stateUpdated(ChannelUID channelUID, State state) {
@@ -258,11 +258,11 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
 
     private ConfigDescriptionRegistry configDescriptionRegistry;
 
-    private Set<Thing> things = new CopyOnWriteArraySet<>();
+    private final Set<Thing> things = new CopyOnWriteArraySet<>();
 
-    private Set<ThingUID> registerHandlerLock = new HashSet<>();
+    private final Set<ThingUID> registerHandlerLock = new HashSet<>();
 
-    private Set<ThingUID> thingUpdatedLock = new HashSet<>();
+    private final Set<ThingUID> thingUpdatedLock = new HashSet<>();
 
     @Override
     public void migrateThingType(final Thing thing, final ThingTypeUID thingTypeUID,
@@ -388,13 +388,7 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
             if (thingHandlerFactory != null) {
                 unregisterAndDisposeHandler(thingHandlerFactory, thing, thingHandler);
                 if (thingTrackerEvent == ThingTrackerEvent.THING_REMOVED) {
-                    SafeMethodCaller.call(new SafeMethodCaller.Action<Void>() {
-                        @Override
-                        public Void call() throws Exception {
-                            thingHandlerFactory.removeThing(thing.getUID());
-                            return null;
-                        }
-                    });
+                    safeCaller.create(thingHandlerFactory).build().removeThing(thing.getUID());
                 }
             } else {
                 logger.warn("Cannot unregister handler. No handler factory for thing '{}' found.", thing.getUID());
@@ -406,55 +400,49 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
 
     @Override
     public void thingUpdated(final Thing thing, ThingTrackerEvent thingTrackerEvent) {
-        Lock lock = getLockForThing(thing.getUID());
-        try {
-            lock.lock();
-            ThingUID thingUID = thing.getUID();
-            Thing oldThing = getThing(thingUID);
-
-            if (oldThing != thing) {
-                this.things.remove(oldThing);
-                this.things.add(thing);
-            }
-
-            final ThingHandler thingHandler = thingHandlers.get(thingUID);
-            if (thingHandler != null) {
-                if (oldThing != thing) {
-                    thing.setHandler(thingHandler);
-                }
-                if (ThingHandlerHelper.isHandlerInitialized(thing) || isInitializing(thing)) {
-                    try {
-                        // prevent infinite loops by not informing handler about self-initiated update
-                        if (!thingUpdatedLock.contains(thingUID)) {
-                            SafeMethodCaller.call(new SafeMethodCaller.ActionWithException<Void>() {
-
-                                @Override
-                                public Void call() throws Exception {
-                                    thingHandler.thingUpdated(thing);
-                                    return null;
-                                }
-                            });
-                        }
-                    } catch (Exception ex) {
-                        logger.error("Exception occurred while calling thing updated at ThingHandler '{}': {}",
-                                thingHandler, ex.getMessage(), ex);
+        ThingUID thingUID = thing.getUID();
+        if (thingUpdatedLock.contains(thingUID)) {
+            // called from the thing handler itself, therefore
+            // it exists, is initializing/initialized and
+            // must not be informed (in order to prevent infinite loops)
+            replaceThing(getThing(thingUID), thing);
+        } else {
+            Lock lock1 = getLockForThing(thing.getUID());
+            try {
+                lock1.lock();
+                ThingHandler thingHandler = replaceThing(getThing(thingUID), thing);
+                if (thingHandler != null) {
+                    if (ThingHandlerHelper.isHandlerInitialized(thing) || isInitializing(thing)) {
+                        safeCaller.create(thingHandler).build().thingUpdated(thing);
+                    } else {
+                        logger.debug(
+                                "Cannot notify handler about updated thing '{}', because handler is not initialized (thing must be in status UNKNOWN, ONLINE or OFFLINE). Starting handler initialization instead.",
+                                thing.getThingTypeUID());
+                        initializeHandler(thing);
                     }
                 } else {
-                    logger.debug(
-                            "Cannot notify handler about updated thing '{}', because handler is not initialized (thing must be in status UNKNOWN, ONLINE or OFFLINE). Starting handler initialization instead.",
-                            thing.getThingTypeUID());
-                    initializeHandler(thing);
+                    registerAndInitializeHandler(thing, getThingHandlerFactory(thing));
                 }
-            } else {
-                registerAndInitializeHandler(thing, getThingHandlerFactory(thing));
-            }
 
-            if (oldThing != thing && oldThing != null) {
+            } finally {
+                lock1.unlock();
+            }
+        }
+    }
+
+    private ThingHandler replaceThing(Thing oldThing, Thing newThing) {
+        final ThingHandler thingHandler = thingHandlers.get(newThing.getUID());
+        if (oldThing != newThing) {
+            this.things.remove(oldThing);
+            this.things.add(newThing);
+            if (thingHandler != null) {
+                newThing.setHandler(thingHandler);
+            }
+            if (oldThing != null) {
                 oldThing.setHandler(null);
             }
-        } finally {
-            lock.unlock();
         }
+        return thingHandler;
     }
 
     private Thing getThing(ThingUID id) {
@@ -635,25 +623,16 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
     private void doInitializeHandler(final ThingHandler thingHandler) {
         logger.debug("Calling initialize handler for thing '{}' at '{}'.", thingHandler.getThing().getUID(),
                 thingHandler);
-        try {
-            SafeMethodCaller.call(new SafeMethodCaller.ActionWithException<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    thingHandler.initialize();
-                    return null;
-                }
-            });
-        } catch (TimeoutException ex) {
+        safeCaller.create(thingHandler).onTimeout(() -> {
             logger.warn("Initializing handler for thing '{}' takes more than {}ms.", thingHandler.getThing().getUID(),
-                    SafeMethodCaller.DEFAULT_TIMEOUT);
-        } catch (Exception ex) {
+                    SafeCaller.DEFAULT_TIMEOUT);
+        }).onException(e -> {
             ThingStatusInfo statusInfo = buildStatusInfo(ThingStatus.UNINITIALIZED,
-                    ThingStatusDetail.HANDLER_INITIALIZING_ERROR,
-                    ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
+                    ThingStatusDetail.HANDLER_INITIALIZING_ERROR, e.getMessage());
             setThingStatus(thingHandler.getThing(), statusInfo);
             logger.error("Exception occurred while initializing handler of thing '{}': {}",
-                    thingHandler.getThing().getUID(), ex.getMessage(), ex);
-        }
+                    thingHandler.getThing().getUID(), e.getMessage(), e);
+        }).build().initialize();
     }
 
     private boolean isInitializing(Thing thing) {
@@ -692,27 +671,17 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
 
     private void doUnregisterHandler(final Thing thing, final ThingHandlerFactory thingHandlerFactory) {
         logger.debug("Calling unregisterHandler handler for thing '{}' at '{}'.", thing.getUID(), thingHandlerFactory);
-        try {
-            SafeMethodCaller.call(new SafeMethodCaller.ActionWithException<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    ThingHandler thingHandler = thing.getHandler();
-                    thingHandlerFactory.unregisterHandler(thing);
-                    if (thingHandler != null) {
-                        thingHandler.setCallback(null);
-                    }
-                    thing.setHandler(null);
-                    setThingStatus(thing,
-                            buildStatusInfo(ThingStatus.UNINITIALIZED, ThingStatusDetail.HANDLER_MISSING_ERROR));
-                    thingHandlers.remove(thing.getUID());
-                    thingHandlersByFactory.remove(thingHandlerFactory, thingHandler);
-                    return null;
-                }
-            });
-        } catch (Exception ex) {
-            logger.error("Exception occurred while calling thing handler factory '{}' ", thingHandlerFactory,
-                    ex.getMessage(), ex);
-        }
+        safeCaller.create((Runnable) () -> {
+            ThingHandler thingHandler = thing.getHandler();
+            thingHandlerFactory.unregisterHandler(thing);
+            if (thingHandler != null) {
+                thingHandler.setCallback(null);
+            }
+            thing.setHandler(null);
+            setThingStatus(thing, buildStatusInfo(ThingStatus.UNINITIALIZED, ThingStatusDetail.HANDLER_MISSING_ERROR));
+            thingHandlers.remove(thing.getUID());
+            thingHandlersByFactory.remove(thingHandlerFactory, thingHandler);
+        }).build().run();
     }
 
     private void disposeHandler(Thing thing, ThingHandler thingHandler) {
@@ -730,23 +699,14 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
 
     private void doDisposeHandler(final ThingHandler thingHandler) {
         logger.debug("Calling dispose handler for thing '{}' at '{}'.", thingHandler.getThing().getUID(), thingHandler);
-        try {
-            SafeMethodCaller.call(new SafeMethodCaller.ActionWithException<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    setThingStatus(thingHandler.getThing(),
-                            buildStatusInfo(ThingStatus.UNINITIALIZED, ThingStatusDetail.NONE));
-                    thingHandler.dispose();
-                    return null;
-                }
-            });
-        } catch (TimeoutException ex) {
+        setThingStatus(thingHandler.getThing(), buildStatusInfo(ThingStatus.UNINITIALIZED, ThingStatusDetail.NONE));
+        safeCaller.create(thingHandler).onTimeout(() -> {
             logger.warn("Disposing handler for thing '{}' takes more than {}ms.", thingHandler.getThing().getUID(),
-                    SafeMethodCaller.DEFAULT_TIMEOUT);
-        } catch (Exception e) {
+                    SafeCaller.DEFAULT_TIMEOUT);
+        }).onException(e -> {
             logger.error("Exception occurred while disposing handler of thing '{}': {}",
                     thingHandler.getThing().getUID(), e.getMessage(), e);
-        }
+        }).build().dispose();
     }
 
     private void unregisterAndDisposeChildHandlers(Bridge bridge, ThingHandlerFactory thingHandlerFactory) {
@@ -909,8 +869,6 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
         handleThingHandlerFactoryAddition(getBundleName(thingHandlerFactory));
     }
 
-    private Set<String> loadedXmlThingTypes = new CopyOnWriteArraySet<>();
-
     @Reference
     public void setReadyService(ReadyService readyService) {
         readyService.registerTracker(this, new ReadyMarkerFilter().withType(XML_THING_TYPE));
@@ -988,7 +946,7 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
     protected void removeThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
         logger.debug("Thing handler factory '{}' removed", thingHandlerFactory.getClass().getSimpleName());
 
-        Set<ThingHandler> handlers = ImmutableSet.copyOf(thingHandlersByFactory.get(thingHandlerFactory));
+        Set<ThingHandler> handlers = new HashSet<>(thingHandlersByFactory.get(thingHandlerFactory));
         for (ThingHandler thingHandler : handlers) {
             Thing thing = thingHandler.getThing();
             if (thing != null && isHandlerRegistered(thing)) {
@@ -1087,6 +1045,15 @@ public class ThingManager implements ThingTracker, ThingTypeMigrationService, Re
 
     protected void unsetInboundCommunication(CommunicationManager communicationManager) {
         this.communicationManager = null;
+    }
+
+    @Reference
+    protected void setSafeCaller(SafeCaller safeCaller) {
+        this.safeCaller = safeCaller;
+    }
+
+    protected void unsetSafeCaller(SafeCaller safeCaller) {
+        this.safeCaller = null;
     }
 
 }
