@@ -43,7 +43,7 @@ public class JSonPathTransformationServiceTest {
     }
 
     private static final String jsonArray = "[" + //
-            "{ \"id\":1, \"name\":\"bob\" }," + //
+            "{ \"id\":1, \"name\":\"bob\", \"empty\":null }," + //
             "{ \"id\":2, \"name\":\"alice\" }" + //
             "]";
 
@@ -72,6 +72,30 @@ public class JSonPathTransformationServiceTest {
     @Test(expected = TransformationException.class)
     public void testInvalidJsonReturnNull() throws TransformationException {
         processor.transform("$", "{id:");
+    }
+
+    @Test
+    public void testNullValue() throws TransformationException {
+        String transformedResponse = processor.transform("$[0].empty", jsonArray);
+        assertEquals("NULL", transformedResponse);
+    }
+
+    @Test
+    public void testIndefinite_filteredToSingle() throws TransformationException {
+        String transformedResponse = processor.transform("$.*[?(@.name=='bob')].id", jsonArray);
+        assertEquals("1", transformedResponse);
+    }
+
+    @Test
+    public void testIndefinite_notFiltered() throws TransformationException {
+        String transformedResponse = processor.transform("$.*.id", jsonArray);
+        assertEquals("NULL", transformedResponse);
+    }
+
+    @Test
+    public void testIndefinite_noMatch() throws TransformationException {
+        String transformedResponse = processor.transform("$.*[?(@.name=='unknown')].id", jsonArray);
+        assertEquals("NULL", transformedResponse);
     }
 
 }

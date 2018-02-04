@@ -12,8 +12,11 @@
  */
 package org.eclipse.smarthome.transform.jsonpath.internal;
 
+import java.util.List;
+
 import org.eclipse.smarthome.core.transform.TransformationException;
 import org.eclipse.smarthome.core.transform.TransformationService;
+import org.eclipse.smarthome.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,13 +57,31 @@ public class JSonPathTransformationService implements TransformationService {
         try {
             Object transformationResult = JsonPath.read(source, jsonPathExpression);
             logger.debug("transformation resulted in '{}'", transformationResult);
-            return (transformationResult != null) ? transformationResult.toString() : source;
+            if (transformationResult == null) {
+                return UnDefType.NULL.toFullString();
+            } else if (transformationResult instanceof List) {
+                return flattenList((List<?>) transformationResult);
+            } else {
+                return transformationResult.toString();
+            }
         } catch (PathNotFoundException e) {
             throw new TransformationException("Invalid path '" + jsonPathExpression + "' in '" + source + "'");
         } catch (InvalidPathException | InvalidJsonException e) {
             throw new TransformationException("An error occurred while transforming JSON expression.", e);
         }
 
+    }
+
+    private String flattenList(List<?> list) {
+        if (list.size() == 1) {
+            return list.get(0).toString();
+        }
+        if (list.size() > 1) {
+            logger.warn(
+                    "JsonPath expressions with more than one result are not allowed, please adapt your selector. Result: {}",
+                    list);
+        }
+        return UnDefType.NULL.toFullString();
     }
 
 }

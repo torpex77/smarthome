@@ -33,6 +33,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.smarthome.config.core.ConfigConstants;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
@@ -89,7 +90,7 @@ public class ConfigDispatcher {
     private final Gson gson = new Gson();
 
     /** The program argument name for setting the service pid namespace */
-    final static public String SERVICEPID_PROG_ARGUMENT = "smarthome.servicepid";
+    public static final String SERVICEPID_PROG_ARGUMENT = "smarthome.servicepid";
 
     /** The property to recognize a service instance created by a service factory */
     public static final String SERVICE_CONTEXT = "esh.servicecontext";
@@ -101,13 +102,13 @@ public class ConfigDispatcher {
      * The program argument name for setting the default services config file
      * name
      */
-    final static public String SERVICECFG_PROG_ARGUMENT = "smarthome.servicecfg";
+    public static final String SERVICECFG_PROG_ARGUMENT = "smarthome.servicecfg";
 
     /** The default namespace for service pids */
-    final static public String SERVICE_PID_NAMESPACE = "org.eclipse.smarthome";
+    public static final String SERVICE_PID_NAMESPACE = "org.eclipse.smarthome";
 
     /** The default services configuration filename */
-    final static public String SERVICE_CFG_FILE = "smarthome.cfg";
+    public static final String SERVICE_CFG_FILE = "smarthome.cfg";
 
     private static final String PID_MARKER = "pid:";
 
@@ -157,30 +158,33 @@ public class ConfigDispatcher {
     private Configuration getConfigurationWithContext(String pidWithContext)
             throws IOException, InvalidSyntaxException {
 
-        if (!pidWithContext.contains(SERVICE_CONTEXT_MARKER)) {
+        if (!pidWithContext.contains(ConfigConstants.SERVICE_CONTEXT_MARKER)) {
             throw new IllegalArgumentException("Given PID should be followed by a context");
         }
-        String pid = pidWithContext.split(SERVICE_CONTEXT_MARKER)[0];
-        String context = pidWithContext.split(SERVICE_CONTEXT_MARKER)[1];
+        String pid = pidWithContext.split(ConfigConstants.SERVICE_CONTEXT_MARKER)[0];
+        String context = pidWithContext.split(ConfigConstants.SERVICE_CONTEXT_MARKER)[1];
 
-        Configuration[] configs = configAdmin
-                .listConfigurations("(&(service.factoryPid=" + pid + ")(" + SERVICE_CONTEXT + "=" + context + "))");
+        Configuration[] configs = configAdmin.listConfigurations("(&(" + ConfigurationAdmin.SERVICE_FACTORYPID + "="
+                + pid + ")(" + ConfigConstants.SERVICE_CONTEXT + "=" + context + "))");
 
-        if (configs == null) {
+        if (configs == null || configs.length == 0) {
             return null;
         }
+        Configuration configuration = configs[0];
+
         if (configs.length > 1) {
-            throw new IllegalStateException("More than one configuration with PID " + pidWithContext + " exists");
+            logger.error("More than one configuration with PID '{}' exists, using entry '{}'.", pidWithContext,
+                    configuration.getProperties().get(Constants.SERVICE_PID));
         }
 
-        return configs[0];
+        return configuration;
     }
 
     private void processOrphanExclusivePIDs() {
         for (String orphanPID : exclusivePIDMap.getOrphanPIDs()) {
             try {
                 Configuration configuration = null;
-                if (orphanPID.contains(SERVICE_CONTEXT_MARKER)) {
+                if (orphanPID.contains(ConfigConstants.SERVICE_CONTEXT_MARKER)) {
                     configuration = getConfigurationWithContext(orphanPID);
                 } else {
                     configuration = configAdmin.getConfiguration(orphanPID, null);
@@ -298,10 +302,10 @@ public class ConfigDispatcher {
 
             pid = exclusivePID;
 
-            if (exclusivePID.contains(SERVICE_CONTEXT_MARKER)) {
+            if (exclusivePID.contains(ConfigConstants.SERVICE_CONTEXT_MARKER)) {
                 // split pid and context
-                pid = exclusivePID.split(SERVICE_CONTEXT_MARKER)[0];
-                context = exclusivePID.split(SERVICE_CONTEXT_MARKER)[1];
+                pid = exclusivePID.split(ConfigConstants.SERVICE_CONTEXT_MARKER)[0];
+                context = exclusivePID.split(ConfigConstants.SERVICE_CONTEXT_MARKER)[1];
             }
 
             lines = lines.subList(1, lines.size());
@@ -339,7 +343,7 @@ public class ConfigDispatcher {
             configMap.put(configuration, new Properties());
         } else if (context != null && exclusivePIDMap.contains(exclusivePID)) {
             Dictionary p = new Properties();
-            p.put(SERVICE_CONTEXT, context);
+            p.put(ConfigConstants.SERVICE_CONTEXT, context);
             configMap.put(configuration, p);
         }
 
