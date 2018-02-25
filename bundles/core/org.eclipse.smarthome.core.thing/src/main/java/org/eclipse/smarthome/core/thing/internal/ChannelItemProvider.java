@@ -187,18 +187,25 @@ public class ChannelItemProvider implements ItemProvider {
             }
         } else {
             logger.debug("Disabling channel item provider.");
-            if (executor != null) {
-                executor.shutdownNow();
-                executor = null;
-            }
-
-            for (ProviderChangeListener<Item> listener : listeners) {
-                for (Item item : getAll()) {
-                    listener.removed(this, item);
-                }
-            }
-            removeRegistryChangeListeners();
+            disableChannelItemProvider();
         }
+    }
+
+    private synchronized void disableChannelItemProvider() {
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
+
+        for (ProviderChangeListener<Item> listener : listeners) {
+            for (Item item : getAll()) {
+                listener.removed(this, item);
+            }
+        }
+        removeRegistryChangeListeners();
+
+        initialized = false;
+        items = null;
     }
 
     private synchronized void delayedInitialize() {
@@ -235,11 +242,7 @@ public class ChannelItemProvider implements ItemProvider {
 
     @Deactivate
     protected void deactivate() {
-        removeRegistryChangeListeners();
-        synchronized (this) {
-            initialized = false;
-            items = null;
-        }
+        disableChannelItemProvider();
     }
 
     private void addRegistryChangeListeners() {
@@ -274,13 +277,11 @@ public class ChannelItemProvider implements ItemProvider {
                     }
                 }
             }
-            if (item != null) {
-                if (item instanceof GenericItem) {
-                    GenericItem gItem = (GenericItem) item;
-                    gItem.setLabel(getLabel(channel));
-                    gItem.setCategory(getCategory(channel));
-                    gItem.addTags(channel.getDefaultTags());
-                }
+            if (item instanceof GenericItem) {
+                GenericItem gItem = (GenericItem) item;
+                gItem.setLabel(getLabel(channel));
+                gItem.setCategory(getCategory(channel));
+                gItem.addTags(channel.getDefaultTags());
             }
             if (item != null) {
                 items.put(item.getName(), item);
