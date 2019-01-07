@@ -1,12 +1,12 @@
 Manifest-Version: 1.0
 Bundle-ActivationPolicy: lazy
 Bundle-ManifestVersion: 2
-Bundle-Name: Dmx Binding Tests
+Bundle-Name: Eclipse SmartHome DMX Binding Tests
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-SymbolicName: org.eclipse.smarthome.binding.dmx.test;singleton:=t
  rue
 Bundle-Vendor: Eclipse.org/SmartHome
-Bundle-Version: 0.10.0.qualifier
+Bundle-Version: 0.11.0.qualifier
 Export-Package: 
  org.eclipse.smarthome.binding.dmx.test;x-internal:=true,
  org.eclipse.smarthome.binding.dmx;uses:="org.eclipse.smarthome.test"
@@ -22,6 +22,7 @@ Import-Package:
  org.eclipse.smarthome.core.items,
  org.eclipse.smarthome.core.library.items,
  org.eclipse.smarthome.core.library.types,
+ org.eclipse.smarthome.core.thing,
  org.eclipse.smarthome.core.thing.link,
  org.eclipse.smarthome.core.thing.util,
  org.eclipse.smarthome.test,
@@ -31,8 +32,13 @@ Import-Package:
  org.hamcrest.core,
  org.hamcrest.number,
  org.junit;version="4.0.0",
+ org.mockito,
+ org.mockito.invocation,
+ org.mockito.stubbing,
+ org.mockito.verification,
  org.osgi.framework,
  org.osgi.service.component,
  org.osgi.service.device,
  org.slf4j
 Service-Component: OSGI-INF/*.xml
+Automatic-Module-Name: org.eclipse.smarthome.binding.dmx.test

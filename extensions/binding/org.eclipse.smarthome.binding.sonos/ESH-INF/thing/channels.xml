@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<thing:thing-descriptions bindingId="sonos" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<thing:thing-descriptions bindingId="sonos"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:thing="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0"
 	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
 
@@ -36,13 +37,6 @@
 		<description>Suppress all songs from the current queue</description>
 	</channel-type>
 
-	<channel-type id="control">
-		<item-type>Player</item-type>
-		<label>Control</label>
-		<description>Control the Zone Player, e.g. start/stop/next/previous/ffward/rewind</description>
-		<category>Player</category>
-	</channel-type>
-
 	<channel-type id="coordinator" advanced="true">
 		<item-type>String</item-type>
 		<label>Coordinator</label>
@@ -68,20 +62,6 @@
 		<item-type>String</item-type>
 		<label>Current Album Cover Art URL</label>
 		<description>Cover art URL of the album currently playing</description>
-		<state readOnly="true" />
-	</channel-type>
-
-	<channel-type id="currentartist">
-		<item-type>String</item-type>
-		<label>Current Artist</label>
-		<description>Name of the artist currently playing</description>
-		<state readOnly="true" />
-	</channel-type>
-
-	<channel-type id="currenttitle">
-		<item-type>String</item-type>
-		<label>Current Title</label>
-		<description>Title of the song currently playing</description>
 		<state readOnly="true" />
 	</channel-type>
 
@@ -125,23 +105,16 @@
 		<state readOnly="true" />
 	</channel-type>
 
-	<channel-type id="mute" advanced="true">
+	<channel-type id="nightmode" advanced="true">
 		<item-type>Switch</item-type>
-		<label>Mute</label>
-		<description>Set or get the mute state of the master volume of the Zone Player</description>
+		<label>Night Mode</label>
+		<description>Enable or disable the night mode feature</description>
 	</channel-type>
 
 	<channel-type id="notificationsound" advanced="true">
 		<item-type>String</item-type>
 		<label>Notification Sound</label>
 		<description>Play a notification sound by a given URI</description>
-	</channel-type>
-
-	<channel-type id="notificationvolume" advanced="true">
-		<item-type>Dimmer</item-type>
-		<label>Notification Sound Volume</label>
-		<description>Set the volume applied to a notification sound</description>
-		<category>SoundVolume</category>
 	</channel-type>
 
 	<channel-type id="playlist" advanced="true">
@@ -236,6 +209,12 @@
 		<state readOnly="false" pattern="%d min" />
 	</channel-type>
 
+	<channel-type id="speechenhancement" advanced="true">
+		<item-type>Switch</item-type>
+		<label>Speech Enhancement </label>
+		<description>Enable or disable the speech enhancement feature</description>
+	</channel-type>
+
 	<channel-type id="standalone" advanced="true">
 		<item-type>Switch</item-type>
 		<label>Stand Alone</label>
@@ -260,13 +239,6 @@
 		<item-type>String</item-type>
 		<label>TuneIn Station Id</label>
 		<description>Provide the current TuneIn station id or play the TuneIn radio given by its station id</description>
-	</channel-type>
-
-	<channel-type id="volume">
-		<item-type>Dimmer</item-type>
-		<label>Volume</label>
-		<description>Set or get the master volume</description>
-		<category>SoundVolume</category>
 	</channel-type>
 
 	<channel-type id="zonegroupid" advanced="true">

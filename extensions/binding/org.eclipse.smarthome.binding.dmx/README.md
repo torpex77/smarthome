@@ -65,7 +65,7 @@ If for some reason continuous transmission is needed, the `refreshmode` can be s
 
 ### Lib485 Bridge (`lib485-bridge`)
 
-The Lib385 bridge has one mandatory configuration value: network address (`address`).
+The Lib485 bridge has one mandatory configuration value: network address (`address`).
 This is the host/port where lib485 is running.
 This can be an IP address but it is also allowed to use a FQDN if DNS resolution is available.
 If necessary the default port 9020 can be changed by adding `:<port>` to the address.
@@ -116,16 +116,23 @@ There is one mandatory configuration value for a dimmer thing.
 It is the `dmxid`, a list of DMX channels that are associated with this thing.
 There are several possible formats: `channel1,channel2,channel3,...` or `channel/width` or a combination of both. 
 
-The `fadetime` option allows a smooth fading from the current to the new value.
+The `fadetime` option allows a smooth transition from the current to the new value.
 The time unit is ms and the interval is for a fade from 0-100%.
 If the current value is 25% and the new value is 75% the time needed for this change is half of `fadetime`.
-Related is the `dimtime` option: it defines the time in ms from 0-100% if incremental dimmming is used. 
+`fadetime`is used for absolute values or ON/OFF commands send to the `brightness` channel. 
+Related is the `dimtime` option: it defines the time in ms from 0-100% if incremental dimming (`INCREASE`/`DECREASE`) is used.
+For convenient use `dimtime` usually is set to a larger value than `fadetime`.
+Typical values are 500-1000 ms for `fadetime` and 2000-5000 ms for `dimtime`. 
 
 Advanced options are the `turnonvalue`and the `turnoffvalue`. 
 They default to 255 (equals 100%) and 0 (equals 0%) respectively.
 This value can be set individually for all DMX channels, the format is `value1,value2, ...` with values from 0 to 255.
 If less values than DMX channels are defined, the values will be re-used from the beginning (i.e. if two values are defined, value1 will be used for channel1, channel3, ... and value2 will be used for channel2, channel4, ...).
 These values will be used if the thing receives an ON or OFF command. 
+
+The `dynamicturnonvalue` can be set to `true` or `false` (default).
+If enabled, thing overwrites the previous turn-on value with the current channel values.
+The next `ON` command uses these values instead of the default (or configuration supplied) values. 
 
 ### Color Thing (`color`)
 
@@ -134,16 +141,23 @@ It is the `dmxid`, a list of DMX channels that are associated with this thing.
 There are several possible formats: `channel1,channel2,channel3,...` or `channel/width` or a combination of both.
 The number of channels has to be a multiple of three. 
 
-The `fadetime` option allows a smooth fading from the current to the new value.
+The `fadetime` option allows a smooth transition from the current to the new value.
 The time unit is ms and the interval is for a fade from 0-100%.
 If the current value is 25% and the new value is 75% the time needed for this change is half of `fadetime`.
-Related is the `dimtime` option: it defines the time in ms from 0-100% if incremental dimmming is used. 
+`fadetime`is used for absolute values or ON/OFF commands send to the `brightness` channel. 
+Related is the `dimtime` option: it defines the time in ms from 0-100% if incremental dimming (`INCREASE`/`DECREASE`) is used.
+For convenient use `dimtime` usually is set to a larger value than `fadetime`.
+Typical values are 500-1000 ms for `fadetime` and 2000-5000 ms for `dimtime`.
 
 Advanced options are the `turnonvalue`and the `turnoffvalue`.
 They default to 255 (equals 100%) and 0 (equals 0%) respectively.
 This value can be set individually for all DMX channels, the format is `value1,value2, ...` with values from 0 to 255.
 If less values than DMX channels are defined, the values will be re-used from the beginning (i.e. if two values are defined, value1 will be used for channel1, channel3, ... and value2 will be used for channel2, channel4, ...).
 These values will be used if the thing receives an ON or OFF command. 
+
+The `dynamicturnonvalue` can be set to `true` or `false` (default).
+If enabled, thing overwrites the previous turn-on value with the current channel values.
+The next `ON` command uses these values instead of the default (or configuration supplied) values. 
 
 ### Tunable White Thing (`tunablewhite`)
 
@@ -153,16 +167,24 @@ There are several possible formats: `channel1,channel2,channel3,...` or `channel
 The number of channels has to be even. In the order "cool white, warm white".
 Additionally a channel for cool and warm white brightness as well as color temperature (`0` being the coolest, `100` being the warmest) will be provided. 
 
-The `fadetime` option allows a smooth fading from the current to the new value.
+The `fadetime` option allows a smooth transition from the current to the new value.
 The time unit is ms and the interval is for a fade from 0-100%.
 If the current value is 25% and the new value is 75% the time needed for this change is half of `fadetime`.
-Related is the `dimtime` option: it defines the time in ms from 0-100% if incremental dimmming is used. 
+`fadetime`is used for absolute values or ON/OFF commands send to the `brightness` channel. 
+Related is the `dimtime` option: it defines the time in ms from 0-100% if incremental dimming (`INCREASE`/`DECREASE`) is used.
+For convenient use `dimtime` usually is set to a larger value than `fadetime`.
+Typical values are 500-1000 ms for `fadetime` and 2000-5000 ms for `dimtime`.
 
 Advanced options are the `turnonvalue`and the `turnoffvalue`.
 They default to 255 (equals 100%) and 0 (equals 0%) respectively.
 This value can be set individually for all DMX channels, the format is `value1,value2, ...` with values from 0 to 255.
 If less values than DMX channels are defined, the values will be re-used from the beginning (i.e. if two values are defined, value1 will be used for channel1, channel3, ... and value2 will be used for channel2, channel4, ...). 
 These values will be used if the thing receives an ON or OFF command. 
+ 
+The `dynamicturnonvalue` can be set to `true` or `false` (default).
+If enabled, thing overwrites the previous turn-on value with the current channel values.
+The next `ON` command uses these values instead of the default (or configuration supplied) values. 
+ 
  
 ## Channels
 
@@ -181,6 +203,24 @@ These values will be used if the thing receives an ON or OFF command.
 |mute             |(all bridges)        |Switch                | mutes the DMX output of the bridge                 |
 
 *Note:* the string send to the control channel of chaser things has to be formatted like the `steps` configuration of the chaser thing. If the new string is invalid, the old configuration will be used.
+
+## Rule Actions
+
+This binding includes a rule action, which allows to immediately change DMX channels from within rules.
+There is a separate instance for each bridge, which can be retrieved e.g. through
+
+```
+val dmxActions = getActions("dmx","dmx:sacn-bridge:mydmxbridge")
+```
+
+where the first parameter always has to be `dmx` and the second is the full Thing UID of the bridge that should be used.
+Once this action instance is retrieved, you can invoke the `sendFade(String channels, String fade, Boolean resumeAfter)` method on it:
+
+```
+dmxActions.sendFade("1:41/3","10000:255,255,255:-1", false)
+```
+
+The parameters are the same as in a chaser thing configuration.
 
 ## Full Example
 

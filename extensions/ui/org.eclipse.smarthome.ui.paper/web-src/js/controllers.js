@@ -1,4 +1,5 @@
-angular.module('PaperUI.controllers', [ 'PaperUI.constants' ]).controller('BodyController', function($rootScope, $scope, $http, $location, $timeout, eventService, toastService, discoveryResultRepository, thingTypeRepository, bindingRepository, itemRepository, restConfig, util) {
+angular.module('PaperUI.controllers', [ 'PaperUI.constants' ])//
+.controller('BodyController', function($rootScope, $scope, $http, $location, $timeout, eventService, toastService, discoveryResultRepository, thingTypeRepository, bindingRepository, itemRepository, restConfig, util, titleService) {
     $scope.scrollTop = 0;
     $(window).scroll(function() {
         $scope.$apply(function(scope) {
@@ -8,10 +9,18 @@ angular.module('PaperUI.controllers', [ 'PaperUI.constants' ]).controller('BodyC
     $scope.isBigTitle = function() {
         return $scope.scrollTop < 80 && !$rootScope.simpleHeader;
     }
+
+    titleService.onTitle(function(title) {
+        $rootScope.title = title;
+    })
+    titleService.onSubtitles(function(subtitles) {
+        $scope.subtitles = subtitles;
+    })
+
     $scope.setTitle = function(title) {
         $rootScope.title = title;
     }
-    $scope.subtitles = [];
+
     $scope.setSubtitle = function(args) {
         $scope.subtitles = [];
         $.each(args, function(i, subtitle) {
@@ -72,58 +81,6 @@ angular.module('PaperUI.controllers', [ 'PaperUI.constants' ]).controller('BodyC
                 angular.element("#audioSink").attr('src', audioUrl);
             }
             prevAudioUrl = audioUrl;
-        }
-    });
-    eventService.onEvent('smarthome/items/*/statechanged', function(topic, stateObject) {
-        var itemName = topic.split('/')[2];
-        var state = stateObject.value;
-
-        console.log('Item ' + itemName + ' updated: ' + state);
-
-        itemRepository.getAll(function(items) {
-            angular.forEach(items, function(item) {
-                if (item.name === itemName) {
-                    changeState(item);
-                }
-            });
-        }, false);
-
-        var changeState = function(item) {
-            var updateState = true;
-            if (item.name === itemName) {
-                // ignore ON and OFF update for Dimmer
-                if (item.type === 'Dimmer') {
-                    if (state === 'ON' || state == 'OFF') {
-                        updateState = false;
-                    }
-                }
-                if (item.type.indexOf("Number") === 0 || item.groupType.indexOf("Number") === 0) {
-                    if (state.indexOf(' ') > 0) {
-                        item.unit = state.substring(state.indexOf(' ') + 1);
-                        state = state.substring(0, state.indexOf(' '));
-                    }
-                    var parsedValue = Number(state);
-                    if (!isNaN(parsedValue)) {
-                        state = parsedValue;
-                    }
-                }
-                if (stateObject.type == "Percent" || stateObject.type == "Decimal") {
-                    if (item.type === "Rollershutter") {
-                        state = parseInt(state);
-                    } else {
-                        state = parseFloat(state);
-                    }
-                }
-
-                updateState = updateState && item.state !== state;
-                if (updateState) {
-                    console.log('Updating ' + itemName + ' to ' + state)
-                    item.state = state;
-                    item.stateText = util.getItemStateText(item);
-                } else {
-                    console.log('Ignoring state ' + state + ' for ' + itemName)
-                }
-            }
         }
     });
 

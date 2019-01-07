@@ -12,9 +12,8 @@
  */
 package org.eclipse.smarthome.binding.dmx.internal;
 
-import static org.eclipse.smarthome.binding.dmx.DmxBindingConstants.*;
+import static org.eclipse.smarthome.binding.dmx.internal.DmxBindingConstants.*;
 
-import org.eclipse.smarthome.binding.dmx.DmxBindingConstants;
 import org.eclipse.smarthome.binding.dmx.handler.ArtnetBridgeHandler;
 import org.eclipse.smarthome.binding.dmx.handler.ChaserThingHandler;
 import org.eclipse.smarthome.binding.dmx.handler.ColorThingHandler;
@@ -29,7 +28,6 @@ import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.ConfigurationPolicy;
 
 /**
  * The {@link DmxHandlerFactory} is responsible for creating things and thing
@@ -37,7 +35,7 @@ import org.osgi.service.component.annotations.ConfigurationPolicy;
  *
  * @author Jan N. Klug - Initial contribution
  */
-@Component(service = ThingHandlerFactory.class, immediate = true, name = "binding.dmx", configurationPolicy = ConfigurationPolicy.OPTIONAL)
+@Component(service = ThingHandlerFactory.class, configurationPid = "binding.dmx")
 public class DmxHandlerFactory extends BaseThingHandlerFactory {
 
     @Override

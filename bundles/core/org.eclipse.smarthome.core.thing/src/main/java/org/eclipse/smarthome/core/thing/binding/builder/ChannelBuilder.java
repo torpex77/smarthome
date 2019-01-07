@@ -21,6 +21,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
+import org.eclipse.smarthome.core.thing.type.AutoUpdatePolicy;
 import org.eclipse.smarthome.core.thing.type.ChannelKind;
 import org.eclipse.smarthome.core.thing.type.ChannelType;
 import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
@@ -44,6 +45,7 @@ public class ChannelBuilder {
     private @Nullable String label;
     private @Nullable String description;
     private @Nullable ChannelTypeUID channelTypeUID;
+    private @Nullable AutoUpdatePolicy autoUpdatePolicy;
 
     private ChannelBuilder(ChannelUID channelUID, @Nullable String acceptedItemType, Set<String> defaultTags) {
         this.channelUID = channelUID;
@@ -61,6 +63,28 @@ public class ChannelBuilder {
      */
     public static ChannelBuilder create(ChannelUID channelUID, @Nullable String acceptedItemType) {
         return new ChannelBuilder(channelUID, acceptedItemType, new HashSet<String>());
+    }
+
+    /**
+     * Creates a channel builder from the given channel.
+     *
+     * @param channel the channel to be changed
+     * @return channel builder
+     */
+    public static ChannelBuilder create(Channel channel) {
+        ChannelBuilder channelBuilder = create(channel.getUID(), channel.getAcceptedItemType())
+                .withConfiguration(channel.getConfiguration()).withDefaultTags(channel.getDefaultTags())
+                .withKind(channel.getKind()).withProperties(channel.getProperties())
+                .withType(channel.getChannelTypeUID());
+        String label = channel.getLabel();
+        if (label != null) {
+            channelBuilder.withLabel(label);
+        }
+        String description = channel.getDescription();
+        if (description != null) {
+            channelBuilder.withDescription(description);
+        }
+        return channelBuilder;
     }
 
     /**
@@ -145,13 +169,24 @@ public class ChannelBuilder {
     }
 
     /**
+     * Sets the auto update policy. See {@link AutoUpdatePolicy} for details.
+     *
+     * @param policy the auto update policy to use
+     * @return channel builder
+     */
+    public ChannelBuilder withAutoUpdatePolicy(@Nullable AutoUpdatePolicy policy) {
+        this.autoUpdatePolicy = policy;
+        return this;
+    }
+
+    /**
      * Builds and returns the channel.
      *
      * @return channel
      */
     public Channel build() {
         return new Channel(channelUID, channelTypeUID, acceptedItemType, kind, configuration, defaultTags, properties,
-                label, description);
+                label, description, autoUpdatePolicy);
     }
 
 }

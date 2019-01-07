@@ -1,14 +1,14 @@
 Manifest-Version: 1.0
-Bundle-Activator: org.eclipse.smarthome.core.internal.CoreActivator
 Bundle-License: https://www.eclipse.org/legal/epl-2.0/
 Bundle-ManifestVersion: 2
 Bundle-Name: Eclipse SmartHome Core
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-SymbolicName: org.eclipse.smarthome.core
 Bundle-Vendor: Eclipse.org/SmartHome
-Bundle-Version: 0.10.0.qualifier
+Bundle-Version: 0.11.0.qualifier
 Export-Package: 
  org.eclipse.smarthome.core.auth,
+ org.eclipse.smarthome.core.auth.client.oauth2,
  org.eclipse.smarthome.core.binding,
  org.eclipse.smarthome.core.binding.dto,
  org.eclipse.smarthome.core.cache,
@@ -31,12 +31,12 @@ Export-Package:
  org.eclipse.smarthome.core.service,
  org.eclipse.smarthome.core.storage,
  org.eclipse.smarthome.core.types,
- org.eclipse.smarthome.core.types.util
+ org.eclipse.smarthome.core.types.util,
+ org.eclipse.smarthome.core.util
 Ignore-Package: org.eclipse.smarthome.core.internal.items,org.eclipse.sm
  arthome.core.internal,org.eclipse.smarthome.core.internal.events,org.ec
  lipse.smarthome.core.internal.logging
 Import-Package: 
- com.google.common.collect,
  com.google.gson,
  javax.measure,
  javax.measure.quantity,
@@ -69,6 +69,7 @@ Import-Package:
  org.eclipse.smarthome.core.types,
  org.eclipse.smarthome.core.types.util,
  org.osgi.framework,
+ org.osgi.service.cm,
  org.osgi.service.component,
  org.osgi.service.event,
  org.osgi.service.packageadmin,
@@ -84,3 +85,4 @@ Private-Package: org.eclipse.smarthome.core.internal,org.eclipse.smartho
  me.core.internal.events,org.eclipse.smarthome.core.internal.items,org.e
  clipse.smarthome.core.internal.logging,org.eclipse.smarthome.core.internal.items.group
 Service-Component: OSGI-INF/*.xml
+Automatic-Module-Name: org.eclipse.smarthome.core

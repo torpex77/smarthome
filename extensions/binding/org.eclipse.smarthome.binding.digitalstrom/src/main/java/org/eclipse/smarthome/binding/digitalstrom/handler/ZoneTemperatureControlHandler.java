@@ -25,11 +25,11 @@ import org.eclipse.smarthome.binding.digitalstrom.DigitalSTROMBindingConstants;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.climate.TemperatureControlSensorTransmitter;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.climate.constants.ControlModes;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.climate.constants.ControlStates;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.climate.jsonResponseContainer.impl.TemperatureControlStatus;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.climate.jsonresponsecontainer.impl.TemperatureControlStatus;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.listener.TemperatureControlStatusListener;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.manager.StructureManager;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.constants.FunctionalColorGroupEnum;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.constants.OutputModeEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.FunctionalColorGroupEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.OutputModeEnum;
 import org.eclipse.smarthome.binding.digitalstrom.internal.providers.DsChannelTypeProvider;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.DecimalType;
@@ -72,7 +72,7 @@ public class ZoneTemperatureControlHandler extends BaseThingHandler implements T
     /**
      * Contains all supported thing types of this handler
      */
-    public static Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<>(
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<>(
             Arrays.asList(DigitalSTROMBindingConstants.THING_TYPE_ZONE_TEMERATURE_CONTROL));
 
     private final Logger logger = LoggerFactory.getLogger(ZoneTemperatureControlHandler.class);
@@ -103,8 +103,9 @@ public class ZoneTemperatureControlHandler extends BaseThingHandler implements T
     public void initialize() {
         logger.debug("Initializing DeviceHandler.");
         if (getConfig().get(DigitalSTROMBindingConstants.ZONE_ID) != null) {
-            if (getBridge() != null) {
-                bridgeStatusChanged(getBridge().getStatusInfo());
+            final Bridge bridge = getBridge();
+            if (bridge != null) {
+                bridgeStatusChanged(bridge.getStatusInfo());
             } else {
                 // Set status to OFFLINE, if no bridge is available e.g. because the bridge has been removed and the
                 // Thing was reinitialized.
@@ -270,7 +271,7 @@ public class ZoneTemperatureControlHandler extends BaseThingHandler implements T
 
     @Override
     public synchronized void configChanged(TemperatureControlStatus tempControlStatus) {
-        if (tempControlStatus != null && tempControlStatus.getIsConfigured()) {
+        if (tempControlStatus != null && tempControlStatus.isNotSetOff()) {
             ControlModes controlMode = ControlModes.getControlMode(tempControlStatus.getControlMode());
             ControlStates controlState = ControlStates.getControlState(tempControlStatus.getControlState());
             if (controlMode != null && controlState != null) {
@@ -298,8 +299,6 @@ public class ZoneTemperatureControlHandler extends BaseThingHandler implements T
                                 "The communication with temperation sensor fails. Temperature control state emergency (temperature control though the control value) is active.");
                     }
                 }
-                // TODO: in case of control-mode zone-follower it is maybe useful to add the followed zone-id, but this
-                // info is not in the control-status
                 Map<String, String> properties = editProperties();
                 properties.put("controlDSUID", tempControlStatus.getControlDSUID());
                 properties.put("controlMode", controlMode.getKey());

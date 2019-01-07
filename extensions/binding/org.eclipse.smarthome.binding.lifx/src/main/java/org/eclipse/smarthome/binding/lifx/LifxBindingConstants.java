@@ -12,8 +12,6 @@
  */
 package org.eclipse.smarthome.binding.lifx;
 
-import static org.eclipse.smarthome.binding.lifx.internal.util.LifxMessageUtil.kelvinToPercentType;
-
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,7 +47,7 @@ public class LifxBindingConstants {
     public static final int MAX_ZONE_INDEX = 255;
 
     // Fallback light state defaults
-    public static final HSBK DEFAULT_COLOR = new HSBK(HSBType.WHITE, kelvinToPercentType(3000));
+    public static final HSBK DEFAULT_COLOR = new HSBK(HSBType.WHITE, 3000);
     public static final PercentType DEFAULT_BRIGHTNESS = PercentType.HUNDRED;
 
     // List of all Channel IDs
@@ -97,7 +95,6 @@ public class LifxBindingConstants {
     public static final ThingTypeUID THING_TYPE_COLORMZLIGHT = new ThingTypeUID(BINDING_ID, "colormzlight");
     public static final ThingTypeUID THING_TYPE_WHITELIGHT = new ThingTypeUID(BINDING_ID, "whitelight");
 
-    @SuppressWarnings("null")
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Stream
             .of(THING_TYPE_COLORLIGHT, THING_TYPE_COLORIRLIGHT, THING_TYPE_COLORMZLIGHT, THING_TYPE_WHITELIGHT)
             .collect(Collectors.toSet());

@@ -14,6 +14,8 @@ package org.eclipse.smarthome.core.thing.events;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.smarthome.core.events.AbstractEventFactory;
 import org.eclipse.smarthome.core.events.Event;
@@ -27,8 +29,6 @@ import org.eclipse.smarthome.core.thing.dto.ThingDTOMapper;
 import org.eclipse.smarthome.core.types.Type;
 import org.osgi.service.component.annotations.Component;
 
-import com.google.common.collect.Sets;
-
 /**
  * A {@link ThingEventFactory} is responsible for creating thing event instances, e.g. {@link ThingStatusInfoEvent}s.
  *
@@ -37,24 +37,26 @@ import com.google.common.collect.Sets;
  */
 @Component(immediate = true, service = EventFactory.class)
 public class ThingEventFactory extends AbstractEventFactory {
-    private static final String THING_STATUS_INFO_EVENT_TOPIC = "smarthome/things/{thingUID}/status";
+    static final String THING_STATUS_INFO_EVENT_TOPIC = "smarthome/things/{thingUID}/status";
 
-    private static final String THING_STATUS_INFO_CHANGED_EVENT_TOPIC = "smarthome/things/{thingUID}/statuschanged";
+    static final String THING_STATUS_INFO_CHANGED_EVENT_TOPIC = "smarthome/things/{thingUID}/statuschanged";
 
-    private static final String THING_ADDED_EVENT_TOPIC = "smarthome/things/{thingUID}/added";
+    static final String THING_ADDED_EVENT_TOPIC = "smarthome/things/{thingUID}/added";
 
-    private static final String THING_REMOVED_EVENT_TOPIC = "smarthome/things/{thingUID}/removed";
+    static final String THING_REMOVED_EVENT_TOPIC = "smarthome/things/{thingUID}/removed";
 
-    private static final String THING_UPDATED_EVENT_TOPIC = "smarthome/things/{thingUID}/updated";
+    static final String THING_UPDATED_EVENT_TOPIC = "smarthome/things/{thingUID}/updated";
 
-    private static final String CHANNEL_TRIGGERED_EVENT_TOPIC = "smarthome/channels/{channelUID}/triggered";
+    static final String CHANNEL_TRIGGERED_EVENT_TOPIC = "smarthome/channels/{channelUID}/triggered";
 
     /**
      * Constructs a new ThingEventFactory.
      */
     public ThingEventFactory() {
-        super(Sets.newHashSet(ThingStatusInfoEvent.TYPE, ThingStatusInfoChangedEvent.TYPE, ThingAddedEvent.TYPE,
-                ThingRemovedEvent.TYPE, ThingUpdatedEvent.TYPE, ChannelTriggeredEvent.TYPE));
+        super(Stream
+                .of(ThingStatusInfoEvent.TYPE, ThingStatusInfoChangedEvent.TYPE, ThingAddedEvent.TYPE,
+                        ThingRemovedEvent.TYPE, ThingUpdatedEvent.TYPE, ChannelTriggeredEvent.TYPE)
+                .collect(Collectors.toSet()));
     }
 
     @Override

@@ -13,7 +13,10 @@
 package org.eclipse.smarthome.ui.internal.proxy;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.Hashtable;
 import java.util.Map;
 
@@ -269,27 +272,33 @@ public class ProxyServletService extends HttpServlet {
                 State state = itemUIRegistry.getItemState(itemName);
                 if (state != null && state instanceof StringType) {
                     try {
-                        uri = URI.create(state.toString());
+                        uri = createURIFromString(state.toString());
                         request.setAttribute(ATTR_URI, uri);
                         return uri;
-                    } catch (IllegalArgumentException ex) {
+                    } catch (MalformedURLException | URISyntaxException ex) {
                         // fall thru
                     }
                 }
             }
 
             try {
-                uri = URI.create(uriString);
+                uri = createURIFromString(uriString);
                 request.setAttribute(ATTR_URI, uri);
                 return uri;
-            } catch (IllegalArgumentException iae) {
+            } catch (MalformedURLException | URISyntaxException ex) {
                 throw new ProxyServletException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                        String.format("URI '%s' is not a valid URI.", uriString));
+                        String.format("URL '%s' is not a valid URL.", uriString));
             }
         } catch (ProxyServletException pse) {
             request.setAttribute(ATTR_SERVLET_EXCEPTION, pse);
             return null;
         }
+    }
+
+    private URI createURIFromString(String url) throws MalformedURLException, URISyntaxException {
+        // URI in this context should be valid URL. Therefore before creating URI, create URL,
+        // which validates the string.
+        return new URL(url).toURI();
     }
 
     /**
@@ -312,6 +321,54 @@ public class ProxyServletService extends HttpServlet {
                 request.header(HttpHeader.AUTHORIZATION, basicAuthentication);
             }
         }
+    }
+
+    /**
+     * Determine if the request is relative to a video widget.
+     *
+     * @param request the servlet request
+     * @return true if the request is relative to a video widget
+     */
+    boolean proxyingVideoWidget(HttpServletRequest request) {
+
+        boolean proxyingVideo = false;
+
+        try {
+            String sitemapName = request.getParameter("sitemap");
+            if (sitemapName == null) {
+                throw new ProxyServletException(HttpServletResponse.SC_BAD_REQUEST,
+                        "Parameter 'sitemap' must be provided!");
+            }
+
+            String widgetId = request.getParameter("widgetId");
+            if (widgetId == null) {
+                throw new ProxyServletException(HttpServletResponse.SC_BAD_REQUEST,
+                        "Parameter 'widgetId' must be provided!");
+            }
+
+            Sitemap sitemap = (Sitemap) modelRepository.getModel(sitemapName);
+            if (sitemap == null) {
+                throw new ProxyServletException(HttpServletResponse.SC_NOT_FOUND,
+                        String.format("Sitemap '%s' could not be found!", sitemapName));
+            }
+
+            Widget widget = itemUIRegistry.getWidget(sitemap, widgetId);
+            if (widget == null) {
+                throw new ProxyServletException(HttpServletResponse.SC_NOT_FOUND,
+                        String.format("Widget '%s' could not be found!", widgetId));
+            }
+
+            if (widget instanceof Image) {
+            } else if (widget instanceof Video) {
+                proxyingVideo = true;
+            } else {
+                throw new ProxyServletException(HttpServletResponse.SC_FORBIDDEN,
+                        String.format("Widget type '%s' is not supported!", widget.getClass().getName()));
+            }
+        } catch (ProxyServletException pse) {
+            request.setAttribute(ATTR_SERVLET_EXCEPTION, pse);
+        }
+        return proxyingVideo;
     }
 
     /**

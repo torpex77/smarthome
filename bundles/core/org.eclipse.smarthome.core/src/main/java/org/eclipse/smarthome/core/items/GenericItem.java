@@ -31,12 +31,11 @@ import org.eclipse.smarthome.core.common.ThreadPoolManager;
 import org.eclipse.smarthome.core.events.EventPublisher;
 import org.eclipse.smarthome.core.i18n.UnitProvider;
 import org.eclipse.smarthome.core.items.events.ItemEventFactory;
+import org.eclipse.smarthome.core.service.StateDescriptionService;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
 import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.StateDescription;
-import org.eclipse.smarthome.core.types.StateDescriptionProvider;
-import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +76,7 @@ public abstract class GenericItem implements ActiveItem {
 
     protected @Nullable String category;
 
-    private @Nullable List<StateDescriptionProvider> stateDescriptionProviders;
+    private @Nullable StateDescriptionService stateDescriptionService;
 
     protected @Nullable UnitProvider unitProvider;
 
@@ -94,7 +93,7 @@ public abstract class GenericItem implements ActiveItem {
     }
 
     @Override
-    public @Nullable State getStateAs(Class<? extends State> typeClass) {
+    public <T extends State> @Nullable T getStateAs(Class<T> typeClass) {
         return state.as(typeClass);
     }
 
@@ -170,7 +169,7 @@ public abstract class GenericItem implements ActiveItem {
     public void dispose() {
         this.listeners.clear();
         this.eventPublisher = null;
-        this.stateDescriptionProviders = null;
+        this.stateDescriptionService = null;
         this.unitProvider = null;
         this.itemStateConverter = null;
     }
@@ -179,8 +178,8 @@ public abstract class GenericItem implements ActiveItem {
         this.eventPublisher = eventPublisher;
     }
 
-    public void setStateDescriptionProviders(@Nullable List<StateDescriptionProvider> stateDescriptionProviders) {
-        this.stateDescriptionProviders = stateDescriptionProviders;
+    public void setStateDescriptionService(@Nullable StateDescriptionService stateDescriptionService) {
+        this.stateDescriptionService = stateDescriptionService;
     }
 
     public void setUnitProvider(@Nullable UnitProvider unitProvider) {
@@ -341,7 +340,7 @@ public abstract class GenericItem implements ActiveItem {
 
     @Override
     public boolean hasTag(String tag) {
-        return (tags.contains(tag));
+        return tags.stream().anyMatch(t -> t.equalsIgnoreCase(tag));
     }
 
     @Override
@@ -361,7 +360,7 @@ public abstract class GenericItem implements ActiveItem {
 
     @Override
     public void removeTag(String tag) {
-        tags.remove(tag);
+        tags.remove(tags.stream().filter(t -> t.equalsIgnoreCase(tag)).findFirst().orElse(tag));
     }
 
     @Override
@@ -396,32 +395,10 @@ public abstract class GenericItem implements ActiveItem {
 
     @Override
     public @Nullable StateDescription getStateDescription(@Nullable Locale locale) {
-        StateDescription result = null;
-        List<StateOption> stateOptions = Collections.emptyList();
-        if (stateDescriptionProviders != null) {
-            for (StateDescriptionProvider stateDescriptionProvider : stateDescriptionProviders) {
-                StateDescription stateDescription = stateDescriptionProvider.getStateDescription(this.name, locale);
-
-                // as long as no valid StateDescription is provided we reassign here:
-                if (result == null) {
-                    result = stateDescription;
-                }
-
-                // if the current StateDescription does provide options and we don't already have some, we pick them up
-                // here
-                if (stateDescription != null && !stateDescription.getOptions().isEmpty() && stateOptions.isEmpty()) {
-                    stateOptions = stateDescription.getOptions();
-                }
-            }
+        if (stateDescriptionService != null) {
+            return stateDescriptionService.getStateDescription(this.name, locale);
         }
-
-        // we recreate the StateDescription if we found a valid one and state options are given:
-        if (result != null && !stateOptions.isEmpty()) {
-            result = new StateDescription(result.getMinimum(), result.getMaximum(), result.getStep(),
-                    result.getPattern(), result.isReadOnly(), stateOptions);
-        }
-
-        return result;
+        return null;
     }
 
     /**
@@ -432,11 +409,8 @@ public abstract class GenericItem implements ActiveItem {
      * @return true if state is an acceptedDataType or subclass thereof
      */
     public boolean isAcceptedState(List<Class<? extends State>> acceptedDataTypes, State state) {
-        if (acceptedDataTypes.stream().map(clazz -> clazz.isAssignableFrom(state.getClass()))
-                .filter(found -> found == true).findAny().isPresent()) {
-            return true;
-        }
-        return false;
+        return acceptedDataTypes.stream().map(clazz -> clazz.isAssignableFrom(state.getClass())).filter(found -> found)
+                .findAny().isPresent();
     }
 
     protected void logSetTypeError(State state) {

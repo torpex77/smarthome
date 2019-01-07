@@ -5,7 +5,7 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-SymbolicName: org.eclipse.smarthome.model.thing.runtime;singleton
  :=true
 Bundle-Vendor: Eclipse.org/SmartHome
-Bundle-Version: 0.10.0.qualifier
+Bundle-Version: 0.11.0.qualifier
 Import-Package: 
  org.eclipse.jdt.annotation;resolution:=optional,
  org.eclipse.smarthome.model.core,
@@ -13,3 +13,4 @@ Import-Package:
  org.slf4j
 Require-Bundle: org.eclipse.smarthome.model.thing
 Service-Component: OSGI-INF/*.xml
+Automatic-Module-Name: org.eclipse.smarthome.model.thing.runtime

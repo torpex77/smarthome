@@ -20,6 +20,7 @@ import javax.measure.Quantity;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.smarthome.core.items.GroupFunction;
+import org.eclipse.smarthome.core.items.GroupItem;
 import org.eclipse.smarthome.core.items.Item;
 import org.eclipse.smarthome.core.library.items.NumberItem;
 import org.eclipse.smarthome.core.types.State;
@@ -42,10 +43,10 @@ public interface QuantityTypeArithmeticGroupFunction extends GroupFunction {
         }
 
         @Override
-        public State getStateAs(Set<Item> items, Class<? extends State> stateClass) {
+        public <T extends State> T getStateAs(Set<Item> items, Class<T> stateClass) {
             State state = calculate(items);
             if (stateClass.isInstance(state)) {
-                return state;
+                return stateClass.cast(state);
             } else {
                 return null;
             }
@@ -54,6 +55,13 @@ public interface QuantityTypeArithmeticGroupFunction extends GroupFunction {
         @Override
         public State[] getParameters() {
             return new State[0];
+        }
+
+        protected boolean isSameDimension(Item item) {
+            if (item instanceof GroupItem) {
+                return isSameDimension(((GroupItem) item).getBaseItem());
+            }
+            return item instanceof NumberItem && dimension.equals(((NumberItem) item).getDimension());
         }
 
     }
@@ -77,8 +85,8 @@ public interface QuantityTypeArithmeticGroupFunction extends GroupFunction {
             QuantityType<?> sum = null;
             int count = 0;
             for (Item item : items) {
-                if (item instanceof NumberItem && dimension.equals(((NumberItem) item).getDimension())) {
-                    QuantityType itemState = (QuantityType) item.getStateAs(QuantityType.class);
+                if (isSameDimension(item)) {
+                    QuantityType itemState = item.getStateAs(QuantityType.class);
                     if (itemState != null) {
                         if (sum == null) {
                             sum = itemState; // initialise the sum from the first item
@@ -119,8 +127,8 @@ public interface QuantityTypeArithmeticGroupFunction extends GroupFunction {
 
             QuantityType<?> sum = null;
             for (Item item : items) {
-                if (item instanceof NumberItem && dimension.equals(((NumberItem) item).getDimension())) {
-                    QuantityType itemState = (QuantityType) item.getStateAs(QuantityType.class);
+                if (isSameDimension(item)) {
+                    QuantityType itemState = item.getStateAs(QuantityType.class);
                     if (itemState != null) {
                         if (sum == null) {
                             sum = itemState; // initialise the sum from the first item
@@ -154,8 +162,8 @@ public interface QuantityTypeArithmeticGroupFunction extends GroupFunction {
 
             QuantityType<?> min = null;
             for (Item item : items) {
-                if (item instanceof NumberItem && dimension.equals(((NumberItem) item).getDimension())) {
-                    QuantityType itemState = (QuantityType) item.getStateAs(QuantityType.class);
+                if (isSameDimension(item)) {
+                    QuantityType itemState = item.getStateAs(QuantityType.class);
                     if (itemState != null) {
                         if (min == null
                                 || (min.getUnit().isCompatible(itemState.getUnit()) && min.compareTo(itemState) > 0)) {
@@ -187,8 +195,8 @@ public interface QuantityTypeArithmeticGroupFunction extends GroupFunction {
 
             QuantityType<?> max = null;
             for (Item item : items) {
-                if (item instanceof NumberItem && dimension.equals(((NumberItem) item).getDimension())) {
-                    QuantityType itemState = (QuantityType) item.getStateAs(QuantityType.class);
+                if (isSameDimension(item)) {
+                    QuantityType itemState = item.getStateAs(QuantityType.class);
                     if (itemState != null) {
                         if (max == null
                                 || (max.getUnit().isCompatible(itemState.getUnit()) && max.compareTo(itemState) < 0)) {

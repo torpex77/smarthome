@@ -26,8 +26,8 @@ import org.eclipse.smarthome.binding.digitalstrom.internal.lib.event.types.Event
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.event.types.EventItem;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.event.types.JSONEventImpl;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.manager.ConnectionManager;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.serverConnection.constants.JSONApiResponseKeysEnum;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.serverConnection.impl.JSONResponseHandler;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.serverconnection.constants.JSONApiResponseKeysEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.serverconnection.impl.JSONResponseHandler;
 import org.eclipse.smarthome.core.common.ThreadPoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,12 +65,13 @@ public class EventListener {
 
     private int subscriptionID = 15;
     private final int timeout = 500;
-    private final List<String> subscribedEvents = Collections.synchronizedList(new LinkedList<String>());;
+    private final List<String> subscribedEvents = Collections.synchronizedList(new LinkedList<String>());
     private boolean subscribed = false;
 
     // error message
     public static final String INVALID_SESSION = "Invalid session!";
-    private final String unknownToken = "Token " + subscriptionID + " not found!";
+    public static final String TOKEN_NOT_FOUND = "token not found."; // Complete text: "Event subscription token not
+                                                                     // found."
 
     private final ConnectionManager connManager;
     private final List<EventHandler> eventHandlers = Collections.synchronizedList(new LinkedList<EventHandler>());
@@ -322,7 +323,7 @@ public class EventListener {
                 if (responseObj != null && responseObj.get(JSONApiResponseKeysEnum.MESSAGE.getKey()) != null) {
                     errorStr = responseObj.get(JSONApiResponseKeysEnum.MESSAGE.getKey()).getAsString();
                 }
-                if (errorStr != null && errorStr.contains(unknownToken)) {
+                if (errorStr != null && errorStr.contains(TOKEN_NOT_FOUND)) {
                     subscriptionIDavailable = true;
                 }
             }
@@ -380,7 +381,7 @@ public class EventListener {
                     if (responseObj != null && responseObj.get(JSONApiResponseKeysEnum.MESSAGE.getKey()) != null) {
                         errorStr = responseObj.get(JSONApiResponseKeysEnum.MESSAGE.getKey()).getAsString();
                     }
-                    if (errorStr != null && (errorStr.equals(INVALID_SESSION) || errorStr.contains(unknownToken))) {
+                    if (errorStr != null && (errorStr.equals(INVALID_SESSION) || errorStr.contains(TOKEN_NOT_FOUND))) {
                         unsubscribe();
                         subscribe(subscribedEvents);
                     } else if (errorStr != null) {

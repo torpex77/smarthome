@@ -8,7 +8,7 @@ Bundle-Name: Eclipse SmartHome Scheduler Service
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-SymbolicName: org.eclipse.smarthome.core.scheduler
 Bundle-Vendor: Eclipse.org/SmartHome
-Bundle-Version: 0.10.0.qualifier
+Bundle-Version: 0.11.0.qualifier
 Export-Package: 
  org.quartz,
  org.quartz.commonj,
@@ -82,3 +82,4 @@ Import-Package:
  org.quartz.xml,
  org.slf4j
 Private-Package: org.eclipse.smarthome.core.scheduler.internal
+Automatic-Module-Name: org.eclipse.smarthome.core.scheduler

@@ -12,6 +12,8 @@
  */
 package org.eclipse.smarthome.core.library.unit;
 
+import java.math.BigInteger;
+
 import javax.measure.Unit;
 import javax.measure.quantity.Acceleration;
 import javax.measure.quantity.AmountOfSubstance;
@@ -34,6 +36,7 @@ import javax.measure.quantity.LuminousIntensity;
 import javax.measure.quantity.MagneticFlux;
 import javax.measure.quantity.MagneticFluxDensity;
 import javax.measure.quantity.Power;
+import javax.measure.quantity.Pressure;
 import javax.measure.quantity.RadiationDoseAbsorbed;
 import javax.measure.quantity.RadiationDoseEffective;
 import javax.measure.quantity.Radioactivity;
@@ -43,14 +46,20 @@ import javax.measure.quantity.Temperature;
 import javax.measure.quantity.Time;
 import javax.measure.quantity.Volume;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.smarthome.core.library.dimension.ArealDensity;
+import org.eclipse.smarthome.core.library.dimension.Density;
 import org.eclipse.smarthome.core.library.dimension.Intensity;
+import org.eclipse.smarthome.core.library.dimension.VolumetricFlowRate;
 
 import tec.uom.se.AbstractSystemOfUnits;
 import tec.uom.se.AbstractUnit;
 import tec.uom.se.format.SimpleUnitFormat;
+import tec.uom.se.function.LogConverter;
 import tec.uom.se.function.PiMultiplierConverter;
 import tec.uom.se.function.RationalConverter;
 import tec.uom.se.unit.AlternateUnit;
+import tec.uom.se.unit.ProductUnit;
 import tec.uom.se.unit.TransformedUnit;
 import tec.uom.se.unit.Units;
 
@@ -62,9 +71,10 @@ import tec.uom.se.unit.Units;
  * @author Henning Treu - initial contribution
  *
  */
+@NonNullByDefault
 public class SmartHomeUnits extends AbstractSystemOfUnits {
 
-    private static SmartHomeUnits INSTANCE = new SmartHomeUnits();
+    private static final SmartHomeUnits INSTANCE = new SmartHomeUnits();
 
     protected SmartHomeUnits() {
         // avoid external instantiation
@@ -83,6 +93,8 @@ public class SmartHomeUnits extends AbstractSystemOfUnits {
      */
     public static final Unit<Intensity> IRRADIANCE = addUnit(
             new AlternateUnit<Intensity>(Units.WATT.divide(Units.SQUARE_METRE), "W/m2"));
+    public static final Unit<Intensity> MICROWATT_PER_SQUARE_CENTIMETRE = addUnit(
+            new TransformedUnit<>(IRRADIANCE, new RationalConverter(BigInteger.valueOf(100), BigInteger.valueOf(1))));
 
     public static final Unit<Dimensionless> ONE = addUnit(AbstractUnit.ONE);
 
@@ -112,21 +124,68 @@ public class SmartHomeUnits extends AbstractSystemOfUnits {
     public static final Unit<RadiationDoseEffective> SIEVERT = addUnit(Units.SIEVERT);
     public static final Unit<CatalyticActivity> KATAL = addUnit(Units.KATAL);
     public static final Unit<Speed> METRE_PER_SECOND = addUnit(Units.METRE_PER_SECOND);
+    public static final Unit<Speed> KNOT = addUnit(new TransformedUnit<>("kn", Units.KILOMETRE_PER_HOUR,
+            new RationalConverter(BigInteger.valueOf(1852), BigInteger.valueOf(1000))));
     public static final Unit<Acceleration> METRE_PER_SQUARE_SECOND = addUnit(Units.METRE_PER_SQUARE_SECOND);
     public static final Unit<Dimensionless> PERCENT = addUnit(Units.PERCENT);
+    public static final Unit<Dimensionless> PARTS_PER_MILLION = addUnit(
+            new TransformedUnit<>(ONE, new RationalConverter(1, 1000000)));
+    public static final Unit<Dimensionless> DECIBEL = addUnit(
+            ONE.transform(new LogConverter(10).inverse().concatenate(RationalConverter.of(1d, 10d))));
     public static final Unit<Time> MINUTE = addUnit(Units.MINUTE);
     public static final Unit<Time> HOUR = addUnit(Units.HOUR);
     public static final Unit<Time> DAY = addUnit(Units.DAY);
     public static final Unit<Time> WEEK = addUnit(Units.WEEK);
     public static final Unit<Time> YEAR = addUnit(Units.YEAR);
     public static final Unit<Volume> LITRE = addUnit(Units.LITRE);
+    public static final Unit<Density> KILOGRAM_PER_CUBICMETRE = addUnit(
+            new ProductUnit<Density>(Units.KILOGRAM.divide(Units.METRE.pow(3))));
+    public static final Unit<Density> MICROGRAM_PER_CUBICMETRE = addUnit(new TransformedUnit<>(KILOGRAM_PER_CUBICMETRE,
+            new RationalConverter(BigInteger.valueOf(1), BigInteger.valueOf(1000000000))));
+    public static final Unit<Energy> WATT_SECOND = addUnit(new ProductUnit<Energy>(Units.WATT.multiply(Units.SECOND)));
+    public static final Unit<Energy> WATT_HOUR = addUnit(new ProductUnit<Energy>(Units.WATT.multiply(Units.HOUR)));
+    public static final Unit<Energy> KILOWATT_HOUR = addUnit(MetricPrefix.KILO(WATT_HOUR));
+    public static final Unit<Pressure> MILLIMETRE_OF_MERCURY = addUnit(new TransformedUnit<>("mmHg", Units.PASCAL,
+            new RationalConverter(BigInteger.valueOf(133322368), BigInteger.valueOf(1000000))));
+    public static final Unit<Pressure> BAR = addUnit(new TransformedUnit<>("bar", Units.PASCAL,
+            new RationalConverter(BigInteger.valueOf(100000), BigInteger.valueOf(1))));
+    public static final Unit<Pressure> MILLIBAR = addUnit(MetricPrefix.MILLI(BAR));
+    public static final Unit<ArealDensity> DOBSON_UNIT = addUnit(
+            new ProductUnit<ArealDensity>(MetricPrefix.MILLI(Units.MOLE).multiply(0.4462).divide(Units.METRE.pow(2))));
+    public static final Unit<VolumetricFlowRate> LITRE_PER_MINUTE = addUnit(
+            new ProductUnit<VolumetricFlowRate>(Units.LITRE.divide(Units.MINUTE)));
+    public static final Unit<VolumetricFlowRate> CUBICMETRE_PER_SECOND = addUnit(
+            new ProductUnit<VolumetricFlowRate>(Units.CUBIC_METRE.divide(Units.SECOND)));
+    public static final Unit<VolumetricFlowRate> CUBICMETRE_PER_MINUTE = addUnit(
+            new ProductUnit<VolumetricFlowRate>(Units.CUBIC_METRE.divide(Units.MINUTE)));
+    public static final Unit<VolumetricFlowRate> CUBICMETRE_PER_HOUR = addUnit(
+            new ProductUnit<VolumetricFlowRate>(Units.CUBIC_METRE.divide(Units.HOUR)));
+    public static final Unit<VolumetricFlowRate> CUBICMETRE_PER_DAY = addUnit(
+            new ProductUnit<VolumetricFlowRate>(Units.CUBIC_METRE.divide(Units.DAY)));
 
     /**
      * Add unit symbols for custom ESH units.
      */
     static {
-        SimpleUnitFormat.getInstance().label(IRRADIANCE, "W/m2");
+        SimpleUnitFormat.getInstance().label(PARTS_PER_MILLION, "ppm");
+        SimpleUnitFormat.getInstance().label(DECIBEL, "dB");
+        SimpleUnitFormat.getInstance().label(IRRADIANCE, "W/m²");
+        SimpleUnitFormat.getInstance().label(MICROWATT_PER_SQUARE_CENTIMETRE, "μW/cm²");
         SimpleUnitFormat.getInstance().label(DEGREE_ANGLE, "°");
+        SimpleUnitFormat.getInstance().label(MICROGRAM_PER_CUBICMETRE, "μg/m³");
+        SimpleUnitFormat.getInstance().label(WATT_SECOND, "Ws");
+        SimpleUnitFormat.getInstance().label(WATT_HOUR, "Wh");
+        SimpleUnitFormat.getInstance().label(KILOWATT_HOUR, "kWh");
+        SimpleUnitFormat.getInstance().label(MILLIMETRE_OF_MERCURY, MILLIMETRE_OF_MERCURY.getSymbol());
+        SimpleUnitFormat.getInstance().label(BAR, BAR.getSymbol());
+        SimpleUnitFormat.getInstance().label(MILLIBAR, "mbar");
+        SimpleUnitFormat.getInstance().label(KNOT, KNOT.getSymbol());
+        SimpleUnitFormat.getInstance().label(DOBSON_UNIT, "DU");
+        SimpleUnitFormat.getInstance().label(LITRE_PER_MINUTE, "l/min");
+        SimpleUnitFormat.getInstance().label(CUBICMETRE_PER_SECOND, "m³/s");
+        SimpleUnitFormat.getInstance().label(CUBICMETRE_PER_MINUTE, "m³/min");
+        SimpleUnitFormat.getInstance().label(CUBICMETRE_PER_HOUR, "m³/h");
+        SimpleUnitFormat.getInstance().label(CUBICMETRE_PER_DAY, "m³/d");
     }
 
     /**

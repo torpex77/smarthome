@@ -14,6 +14,8 @@ package org.eclipse.smarthome.core.library.types;
 
 import java.math.BigDecimal;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.PrimitiveType;
 import org.eclipse.smarthome.core.types.State;
@@ -22,6 +24,7 @@ import org.eclipse.smarthome.core.types.State;
  *
  * @author Kai Kreuzer - Initial contribution
  */
+@NonNullByDefault
 public enum UpDownType implements PrimitiveType, State, Command {
     UP,
     DOWN;
@@ -42,11 +45,11 @@ public enum UpDownType implements PrimitiveType, State, Command {
     }
 
     @Override
-    public State as(Class<? extends State> target) {
+    public <T extends State> @Nullable T as(@Nullable Class<T> target) {
         if (target == DecimalType.class) {
-            return equals(UP) ? DecimalType.ZERO : new DecimalType(new BigDecimal("1.0"));
+            return target.cast(equals(UP) ? DecimalType.ZERO : new DecimalType(new BigDecimal("1.0")));
         } else if (target == PercentType.class) {
-            return equals(UP) ? PercentType.ZERO : PercentType.HUNDRED;
+            return target.cast(equals(UP) ? PercentType.ZERO : PercentType.HUNDRED);
         } else {
             return State.super.as(target);
         }

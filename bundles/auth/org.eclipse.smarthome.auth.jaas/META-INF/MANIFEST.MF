@@ -6,10 +6,11 @@ Bundle-Name: Eclipse SmartHome JAAS Auth
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-SymbolicName: org.eclipse.smarthome.auth.jaas
 Bundle-Vendor: Eclipse.org/SmartHome
-Bundle-Version: 0.10.0.qualifier
+Bundle-Version: 0.11.0.qualifier
 Import-Package: 
  org.eclipse.jdt.annotation;resolution:=optional,
  org.eclipse.smarthome.core.auth,
  org.osgi.service.cm,
  org.slf4j
 Service-Component: OSGI-INF/*.xml
+Automatic-Module-Name: org.eclipse.smarthome.auth.jaas

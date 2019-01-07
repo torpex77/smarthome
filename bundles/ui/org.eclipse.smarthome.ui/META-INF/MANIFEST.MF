@@ -7,7 +7,7 @@ Bundle-Name: Eclipse SmartHome UI
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-SymbolicName: org.eclipse.smarthome.ui
 Bundle-Vendor: Eclipse.org/SmartHome
-Bundle-Version: 0.10.0.qualifier
+Bundle-Version: 0.11.0.qualifier
 Export-Package: 
  org.eclipse.smarthome.ui.chart,
  org.eclipse.smarthome.ui.items
@@ -40,6 +40,7 @@ Import-Package:
  org.eclipse.smarthome.core.transform,
  org.eclipse.smarthome.core.types,
  org.eclipse.smarthome.core.types.util,
+ org.eclipse.smarthome.io.http.servlet,
  org.eclipse.smarthome.model.core,
  org.eclipse.smarthome.model.items,
  org.eclipse.smarthome.model.sitemap,
@@ -51,3 +52,4 @@ Import-Package:
  org.slf4j
 Private-Package: org.eclipse.smarthome.ui.internal
 Service-Component: OSGI-INF/*.xml
+Automatic-Module-Name: org.eclipse.smarthome.ui

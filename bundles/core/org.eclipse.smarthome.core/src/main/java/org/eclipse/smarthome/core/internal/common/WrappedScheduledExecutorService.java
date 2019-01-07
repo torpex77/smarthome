@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class WrappedScheduledExecutorService extends ScheduledThreadPoolExecutor {
 
-    static final Logger logger = LoggerFactory.getLogger(WrappedScheduledExecutorService.class);
+    final Logger logger = LoggerFactory.getLogger(WrappedScheduledExecutorService.class);
 
     public WrappedScheduledExecutorService(int corePoolSize, ThreadFactory threadFactory) {
         super(corePoolSize, threadFactory);
@@ -64,7 +64,7 @@ public class WrappedScheduledExecutorService extends ScheduledThreadPoolExecutor
             }
         }
         if (actualThrowable != null) {
-            logger.warn("Scheduled runnable ended with an exception", actualThrowable);
+            logger.warn("Scheduled runnable ended with an exception: ", actualThrowable);
         }
     }
 }

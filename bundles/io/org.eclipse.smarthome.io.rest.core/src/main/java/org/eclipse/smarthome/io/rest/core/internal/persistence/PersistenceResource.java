@@ -55,7 +55,7 @@ import org.eclipse.smarthome.core.persistence.dto.PersistenceServiceDTO;
 import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.TypeParser;
 import org.eclipse.smarthome.io.rest.JSONResponse;
-import org.eclipse.smarthome.io.rest.LocaleUtil;
+import org.eclipse.smarthome.io.rest.LocaleService;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -83,7 +83,7 @@ import io.swagger.annotations.ApiResponses;
  */
 @Path(PersistenceResource.PATH)
 @Api(value = PersistenceResource.PATH)
-@Component(service = { RESTResource.class, PersistenceResource.class })
+@Component
 public class PersistenceResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(PersistenceResource.class);
@@ -99,6 +99,8 @@ public class PersistenceResource implements RESTResource {
     private PersistenceServiceRegistry persistenceServiceRegistry;
     private TimeZoneProvider timeZoneProvider;
 
+    private LocaleService localeService;
+
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     protected void setPersistenceServiceRegistry(PersistenceServiceRegistry persistenceServiceRegistry) {
         this.persistenceServiceRegistry = persistenceServiceRegistry;
@@ -108,7 +110,7 @@ public class PersistenceResource implements RESTResource {
         this.persistenceServiceRegistry = null;
     }
 
-    @Reference
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     protected void setTimeZoneProvider(TimeZoneProvider timeZoneProvider) {
         this.timeZoneProvider = timeZoneProvider;
     }
@@ -126,6 +128,15 @@ public class PersistenceResource implements RESTResource {
         this.itemRegistry = null;
     }
 
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    protected void setLocaleService(LocaleService localeService) {
+        this.localeService = localeService;
+    }
+
+    protected void unsetLocaleService(LocaleService localeService) {
+        this.localeService = null;
+    }
+
     @GET
     @RolesAllowed({ Role.ADMIN })
     @Produces({ MediaType.APPLICATION_JSON })
@@ -133,7 +144,7 @@ public class PersistenceResource implements RESTResource {
     @ApiResponses(value = @ApiResponse(code = 200, message = "OK", response = String.class, responseContainer = "List"))
     public Response httpGetPersistenceServices(@Context HttpHeaders headers,
             @HeaderParam(HttpHeaders.ACCEPT_LANGUAGE) @ApiParam(value = HttpHeaders.ACCEPT_LANGUAGE) String language) {
-        Locale locale = LocaleUtil.getLocale(language);
+        Locale locale = localeService.getLocale(language);
 
         Object responseObject = getPersistenceServiceList(locale);
         return Response.ok(responseObject).build();
@@ -217,6 +228,17 @@ public class PersistenceResource implements RESTResource {
         // Benchmarking timer...
         long timerStart = System.currentTimeMillis();
 
+        ItemHistoryDTO dto = createDTO(serviceId, itemName, timeBegin, timeEnd, pageNumber, pageLength, boundary);
+        if (dto == null) {
+            JSONResponse.createErrorResponse(Status.BAD_REQUEST, "Persistence service not queryable: " + serviceId);
+        }
+        logger.debug("Persistence returned {} rows in {}ms", dto.datapoints, System.currentTimeMillis() - timerStart);
+
+        return JSONResponse.createResponse(Status.OK, dto, "");
+    }
+
+    protected ItemHistoryDTO createDTO(String serviceId, String itemName, String timeBegin, String timeEnd,
+            int pageNumber, int pageLength, boolean boundary) {
         // If serviceId is null, then use the default service
         PersistenceService service = null;
         String effectiveServiceId = serviceId != null ? serviceId : persistenceServiceRegistry.getDefaultId();
@@ -224,14 +246,12 @@ public class PersistenceResource implements RESTResource {
 
         if (service == null) {
             logger.debug("Persistence service not found '{}'.", effectiveServiceId);
-            return JSONResponse.createErrorResponse(Status.BAD_REQUEST,
-                    "Persistence service not found: " + effectiveServiceId);
+            return null;
         }
 
         if (!(service instanceof QueryablePersistenceService)) {
             logger.debug("Persistence service not queryable '{}'.", effectiveServiceId);
-            return JSONResponse.createErrorResponse(Status.BAD_REQUEST,
-                    "Persistence service not queryable: " + effectiveServiceId);
+            return null;
         }
 
         QueryablePersistenceService qService = (QueryablePersistenceService) service;
@@ -308,6 +328,7 @@ public class PersistenceResource implements RESTResource {
             Iterator<HistoricItem> it = result.iterator();
 
             // Iterate through the data
+            HistoricItem lastItem = null;
             while (it.hasNext()) {
                 HistoricItem historicItem = it.next();
                 state = historicItem.getState();
@@ -315,11 +336,15 @@ public class PersistenceResource implements RESTResource {
                 // For 'binary' states, we need to replicate the data
                 // to avoid diagonal lines
                 if (state instanceof OnOffType || state instanceof OpenClosedType) {
-                    dto.addData(historicItem.getTimestamp().getTime(), state);
+                    if (lastItem != null) {
+                        dto.addData(historicItem.getTimestamp().getTime(), lastItem.getState());
+                        quantity++;
+                    }
                 }
 
                 dto.addData(historicItem.getTimestamp().getTime(), state);
                 quantity++;
+                lastItem = historicItem;
             }
         }
 
@@ -336,9 +361,7 @@ public class PersistenceResource implements RESTResource {
         }
 
         dto.datapoints = Long.toString(quantity);
-        logger.debug("Persistence returned {} rows in {}ms", dto.datapoints, System.currentTimeMillis() - timerStart);
-
-        return JSONResponse.createResponse(Status.OK, dto, "");
+        return dto;
     }
 
     /**
@@ -498,6 +521,7 @@ public class PersistenceResource implements RESTResource {
 
     @Override
     public boolean isSatisfied() {
-        return itemRegistry != null && persistenceServiceRegistry != null;
+        return itemRegistry != null && persistenceServiceRegistry != null && timeZoneProvider != null
+                && localeService != null;
     }
 }

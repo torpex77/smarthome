@@ -12,7 +12,8 @@
  */
 package org.eclipse.smarthome.binding.hue.internal;
 
-import static org.eclipse.smarthome.binding.hue.HueBindingConstants.*;
+import static org.eclipse.smarthome.binding.hue.internal.HueBindingConstants.*;
+import static org.eclipse.smarthome.core.thing.Thing.PROPERTY_SERIAL_NUMBER;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
@@ -20,9 +21,10 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
-import org.eclipse.smarthome.binding.hue.handler.HueBridgeHandler;
 import org.eclipse.smarthome.binding.hue.internal.discovery.HueLightDiscoveryService;
+import org.eclipse.smarthome.binding.hue.internal.handler.HueBridgeHandler;
 import org.eclipse.smarthome.binding.hue.test.AbstractHueOSGiTest;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.config.discovery.DiscoveryListener;
@@ -37,7 +39,6 @@ import org.eclipse.smarthome.core.thing.ThingStatusInfo;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.builder.ThingStatusInfoBuilder;
-import org.eclipse.smarthome.test.AsyncResultWrapper;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -74,7 +75,7 @@ public class HueLightDiscoveryServiceOSGiTest extends AbstractHueOSGiTest {
         Configuration configuration = new Configuration();
         configuration.put(HOST, "1.2.3.4");
         configuration.put(USER_NAME, "testUserName");
-        configuration.put(SERIAL_NUMBER, "testSerialNumber");
+        configuration.put(PROPERTY_SERIAL_NUMBER, "testSerialNumber");
 
         hueBridge = (Bridge) thingRegistry.createThingOfType(BRIDGE_THING_TYPE_UID, BRIDGE_THING_UID, null, "Bridge",
                 configuration);
@@ -116,7 +117,7 @@ public class HueLightDiscoveryServiceOSGiTest extends AbstractHueOSGiTest {
         light.setModelID("LCT001");
         light.setType("Extended color light");
 
-        AsyncResultWrapper<DiscoveryResult> resultWrapper = new AsyncResultWrapper<DiscoveryResult>();
+        AtomicReference<DiscoveryResult> resultWrapper = new AtomicReference<>();
 
         registerDiscoveryListener(new DiscoveryListener() {
             @Override
@@ -137,10 +138,10 @@ public class HueLightDiscoveryServiceOSGiTest extends AbstractHueOSGiTest {
 
         discoveryService.onLightAdded(null, light);
         waitForAssert(() -> {
-            assertTrue(resultWrapper.isSet());
+            assertTrue(resultWrapper.get() != null);
         });
 
-        final DiscoveryResult result = resultWrapper.getWrappedObject();
+        final DiscoveryResult result = resultWrapper.get();
         assertThat(result.getFlag(), is(DiscoveryResultFlag.NEW));
         assertThat(result.getThingUID().toString(), is("hue:0210:testBridge:" + light.getId()));
         assertThat(result.getThingTypeUID(), is(THING_TYPE_EXTENDED_COLOR_LIGHT));
@@ -152,15 +153,11 @@ public class HueLightDiscoveryServiceOSGiTest extends AbstractHueOSGiTest {
     public void startSearchIsCalled() {
 
         final AtomicBoolean searchHasBeenTriggered = new AtomicBoolean(false);
-        AsyncResultWrapper<String> addressWrapper = new AsyncResultWrapper<String>();
-        AsyncResultWrapper<String> bodyWrapper = new AsyncResultWrapper<String>();
 
         MockedHttpClient mockedHttpClient = new MockedHttpClient() {
 
             @Override
             public Result put(String address, String body) throws IOException {
-                addressWrapper.set(address);
-                bodyWrapper.set(body);
                 return new Result("", 200);
             }
 
@@ -168,6 +165,12 @@ public class HueLightDiscoveryServiceOSGiTest extends AbstractHueOSGiTest {
             public Result get(String address) throws IOException {
                 if (address.endsWith("testUserName")) {
                     String body = "{\"lights\":{}}";
+                    return new Result(body, 200);
+                } else if (address.endsWith("lights") || address.endsWith("sensors")) {
+                    String body = "{}";
+                    return new Result(body, 200);
+                } else if (address.endsWith("testUserName/config")) {
+                    String body = "{ \"apiversion\": \"1.26.0\"}";
                     return new Result(body, 200);
                 } else {
                     return new Result("", 404);

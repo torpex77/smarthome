@@ -25,22 +25,22 @@ import java.util.List;
 public class ParsingException extends Exception {
 
     /**
-     * This field keeps all accumulated exceptions.
+     * Keeps all accumulated exceptions.
      */
     List<ParsingNestedException> exceptions;
 
     /**
-     * This constructor creates the holder for one exception during the parsing process.
+     * Creates the holder for one exception during the parsing process.
      *
      * @param e is an exception during the parsing process.
      */
     public ParsingException(ParsingNestedException e) {
-        exceptions = new ArrayList<ParsingNestedException>();
+        exceptions = new ArrayList<>();
         exceptions.add(e);
     }
 
     /**
-     * This constructor creates a holder for several exceptions during the parsing process.
+     * Creates a holder for several exceptions during the parsing process.
      *
      * @param exceptions is a list with exceptions during the parsing process.
      */

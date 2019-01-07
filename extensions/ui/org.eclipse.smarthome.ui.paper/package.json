@@ -1,23 +1,24 @@
 {
   "name": "org.eclipse.smarthome.ui.paperui",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "scripts": {
     "install": "node node_modules/openlayers/tasks/build.js openlayers-esh.json node_modules/openlayers/ol-esh.js",
-    "start": "gulp serve --development",
+    "start": "gulp serve",
     "build": "gulp default",
-    "test": "gulp test"
+    "test": "gulp test",
+    "dev": "gulp serve --development --noMinify"
   },
   "dependencies": {
-    "angular": "1.4.8",
-    "angular-animate": "1.4.8",
-    "angular-aria": "1.4.8",
+    "angular": "1.5.7",
+    "angular-animate": "1.5.7",
+    "angular-aria": "1.5.7",
+    "angular-messages": "1.5.7",
+    "angular-resource": "1.5.7",
+    "angular-route": "1.5.7",
+    "angular-sanitize": "1.5.7",
     "angular-material": "1.0.1",
     "angular-material-expansion-panel": "0.7.2",
-    "angular-messages": "1.4.8",
-    "angular-resource": "1.4.8",
-    "angular-route": "1.4.8",
-    "angular-sanitize": "1.4.8",
     "angular-ui-sortable": "0.13.4",
     "bootstrap": "3.3.2",
     "eventsource-polyfill": "https://github.com/amvtek/EventSource/tarball/53616d4",
@@ -34,7 +35,7 @@
     "node": ">=0.12.3"
   },
   "devDependencies": {
-    "angular-mocks": "1.4.8",
+    "angular-mocks": "1.5.7",
     "browser-sync": "~2.7.12",
     "del": "^2.0.0",
     "gulp": "^3.9.0",
@@ -52,6 +53,7 @@
     "karma-jasmine": "^1.0.2",
     "karma-junit7-sonarqube-reporter": "0.0.5",
     "karma-phantomjs-launcher": "^1.0.1",
-    "karma-spec-reporter": "0.0.26"
+    "karma-spec-reporter": "0.0.26",
+    "merge-stream": "^1.0.1"
   }
 }

@@ -64,8 +64,7 @@ public class WelcomeHomeModuleTypeProvider implements ModuleTypeProvider {
      * To provide the {@link ModuleType}s should register the WelcomeHomeModuleTypeProvider as
      * {@link ModuleTypeProvider} service.
      *
-     * @param bc
-     *            is a bundle's execution context within the Framework.
+     * @param bc is a bundle's execution context within the Framework.
      */
     public void register(BundleContext bc) {
         providerReg = bc.registerService(ModuleTypeProvider.class.getName(), this, null);

@@ -81,7 +81,8 @@ public class ItemStateConverterImpl implements ItemStateConverter {
 
                 Class<? extends Quantity<?>> dimension = numberItem.getDimension();
                 @SuppressWarnings({ "unchecked", "rawtypes" })
-                Unit<? extends Quantity<?>> conversionUnit = unitProvider.getUnit((Class<Quantity>) dimension);
+                // explicit cast to Class<? extends Quantity> as JDK compiler complains
+                Unit<? extends Quantity<?>> conversionUnit = unitProvider.getUnit((Class<? extends Quantity>) dimension);
                 if (conversionUnit != null
                         && UnitUtils.isDifferentMeasurementSystem(conversionUnit, quantityState.getUnit())) {
                     return convertOrUndef(quantityState, conversionUnit);
@@ -89,7 +90,12 @@ public class ItemStateConverterImpl implements ItemStateConverter {
 
                 return state;
             } else {
-                return state.as(DecimalType.class);
+                State convertedState = state.as(DecimalType.class);
+                if (convertedState != null) {
+                    // convertedState is always returned because the state is an instance
+                    // of QuantityType which never returns null for as(DecimalType.class)
+                    return convertedState;
+                }
             }
         }
 

@@ -20,14 +20,14 @@ package org.eclipse.smarthome.binding.hue.internal;
  */
 public class State {
     private boolean on;
-    protected int bri;
-    private int hue;
-    private int sat;
+    int bri;
+    int hue;
+    int sat;
     private float[] xy;
     private int ct;
     private String alert;
     private String effect;
-    private String colormode;
+    String colormode;
     private boolean reachable;
 
     State() {
@@ -158,6 +158,9 @@ public class State {
      * @return current color mode
      */
     public ColorMode getColorMode() {
+        if (colormode == null) {
+            return null;
+        }
         return ColorMode.valueOf(colormode.toUpperCase());
     }
 
@@ -167,6 +170,9 @@ public class State {
      * @return current active effect
      */
     public Effect getEffect() {
+        if (effect == null) {
+            return null;
+        }
         return Effect.valueOf(effect.toUpperCase());
     }
 

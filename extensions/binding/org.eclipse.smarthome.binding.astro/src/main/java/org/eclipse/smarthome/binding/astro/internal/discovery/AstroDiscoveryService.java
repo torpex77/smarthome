@@ -47,14 +47,14 @@ import org.slf4j.LoggerFactory;
 @Component(service = DiscoveryService.class, immediate = true, configurationPid = "discovery.astro")
 public class AstroDiscoveryService extends AbstractDiscoveryService {
     private final Logger logger = LoggerFactory.getLogger(AstroDiscoveryService.class);
-    private static final int DISCOVER_TIMEOUT_SECONDS = 30;
+    private static final int DISCOVER_TIMEOUT_SECONDS = 2;
     private static final int LOCATION_CHANGED_CHECK_INTERVAL = 60;
     private LocationProvider locationProvider;
     private ScheduledFuture<?> astroDiscoveryJob;
     private PointType previousLocation;
 
-    private static final ThingUID sunThing = new ThingUID(THING_TYPE_SUN, LOCAL);
-    private static final ThingUID moonThing = new ThingUID(THING_TYPE_MOON, LOCAL);
+    private static final ThingUID SUN_THING = new ThingUID(THING_TYPE_SUN, LOCAL);
+    private static final ThingUID MOON_THING = new ThingUID(THING_TYPE_MOON, LOCAL);
 
     /**
      * Creates a AstroDiscoveryService with enabled autostart.
@@ -121,15 +121,11 @@ public class AstroDiscoveryService extends AbstractDiscoveryService {
 
     public void createResults(PointType location) {
         String propGeolocation;
-        if (location.getAltitude() != null) {
-            propGeolocation = String.format("%s,%s,%s", location.getLatitude(), location.getLongitude(),
-                    location.getAltitude());
-        } else {
-            propGeolocation = String.format("%s,%s", location.getLatitude(), location.getLongitude());
-        }
-        thingDiscovered(DiscoveryResultBuilder.create(sunThing).withLabel("Local Sun")
+        propGeolocation = String.format("%s,%s,%s", location.getLatitude(), location.getLongitude(),
+                location.getAltitude());
+        thingDiscovered(DiscoveryResultBuilder.create(SUN_THING).withLabel("Local Sun")
                 .withProperty("geolocation", propGeolocation).withRepresentationProperty("geolocation").build());
-        thingDiscovered(DiscoveryResultBuilder.create(moonThing).withLabel("Local Moon")
+        thingDiscovered(DiscoveryResultBuilder.create(MOON_THING).withLabel("Local Moon")
                 .withProperty("geolocation", propGeolocation).withRepresentationProperty("geolocation").build());
     }
 

@@ -15,6 +15,7 @@ package org.eclipse.smarthome.core.library.types;
 import static org.eclipse.jdt.annotation.DefaultLocation.*;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.IllegalFormatConversionException;
 
 import javax.measure.Dimension;
@@ -27,16 +28,17 @@ import javax.measure.quantity.Dimensionless;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.internal.library.unit.UnitInitializer;
 import org.eclipse.smarthome.core.library.unit.SmartHomeUnits;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.PrimitiveType;
 import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.eclipse.smarthome.core.types.util.UnitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tec.uom.se.AbstractUnit;
+import tec.uom.se.function.QuantityFunctions;
 import tec.uom.se.quantity.Quantities;
 
 /**
@@ -59,9 +61,25 @@ public class QuantityType<T extends Quantity<T>> extends Number
     public static final QuantityType<Dimensionless> ONE = new QuantityType<>(1, AbstractUnit.ONE);
 
     // Regular expression to split unit from value
-    private static final String UNIT_PATTERN = "(?<=\\d)\\s*(?=[a-zA-Z°µ%'])";
+    // split on any blank character, even none (\\s*) which occurs after a digit (?<=\\d) and before
+    // a "unit" character ?=[a-zA-Z°µ%'] which itself must not be preceded by plus/minus digit (?![\\+\\-]?\\d).
+    // The later would be an exponent from the scalar value.
+    private static final String UNIT_PATTERN = "(?<=\\d)\\s*(?=[a-zA-Z°µ%'](?![\\+\\-]?\\d))";
 
     private final Quantity<T> quantity;
+
+    static {
+        UnitInitializer.init();
+    }
+
+    /**
+     * Creates a dimensionless {@link QuantityType} with scalar 0 and unit {@link AbstractUnit#ONE}.
+     * A default constructor is needed by {@link org.eclipse.smarthome.core.internal.items.ItemUpdater#receiveUpdate})
+     */
+    @SuppressWarnings("unchecked")
+    public QuantityType() {
+        this.quantity = (Quantity<T>) ZERO.quantity;
+    }
 
     /**
      * Creates a new {@link QuantityType} with the given value. The value may contain a unit. The specific
@@ -257,47 +275,51 @@ public class QuantityType<T extends Quantity<T>> extends Number
 
     @Override
     public String toFullString() {
-        return quantity.toString();
+        if (quantity.getUnit() == AbstractUnit.ONE) {
+            return quantity.getValue().toString();
+        } else {
+            return quantity.toString();
+        }
     }
 
     @Override
-    public State as(@Nullable Class<? extends @Nullable State> target) {
+    public <U extends State> @Nullable U as(@Nullable Class<U> target) {
         if (target == OnOffType.class) {
             if (intValue() == 0) {
-                return OnOffType.OFF;
+                return target.cast(OnOffType.OFF);
             } else if (SmartHomeUnits.PERCENT.equals(getUnit())) {
-                return toBigDecimal().compareTo(BigDecimal.ZERO) > 0 ? OnOffType.ON : OnOffType.OFF;
+                return target.cast(toBigDecimal().compareTo(BigDecimal.ZERO) > 0 ? OnOffType.ON : OnOffType.OFF);
             } else if (toBigDecimal().compareTo(BigDecimal.ONE) == 0) {
-                return OnOffType.ON;
+                return target.cast(OnOffType.ON);
             } else {
-                return UnDefType.UNDEF;
+                return null;
             }
         } else if (target == UpDownType.class) {
             if (doubleValue() == 0) {
-                return UpDownType.UP;
+                return target.cast(UpDownType.UP);
             } else if (toBigDecimal().compareTo(BigDecimal.ONE) == 0) {
-                return UpDownType.DOWN;
+                return target.cast(UpDownType.DOWN);
             } else {
-                return UnDefType.UNDEF;
+                return null;
             }
         } else if (target == OpenClosedType.class) {
             if (doubleValue() == 0) {
-                return OpenClosedType.CLOSED;
+                return target.cast(OpenClosedType.CLOSED);
             } else if (toBigDecimal().compareTo(BigDecimal.ONE) == 0) {
-                return OpenClosedType.OPEN;
+                return target.cast(OpenClosedType.OPEN);
             } else {
-                return UnDefType.UNDEF;
+                return null;
             }
         } else if (target == HSBType.class) {
-            return new HSBType(DecimalType.ZERO, PercentType.ZERO,
-                    new PercentType(this.toBigDecimal().multiply(HUNDRED)));
+            return target.cast(new HSBType(DecimalType.ZERO, PercentType.ZERO,
+                    new PercentType(this.toBigDecimal().multiply(HUNDRED))));
         } else if (target == PercentType.class) {
             if (SmartHomeUnits.PERCENT.equals(getUnit())) {
-                return new PercentType(toBigDecimal());
+                return target.cast(new PercentType(toBigDecimal()));
             }
-            return new PercentType(toBigDecimal().multiply(HUNDRED));
+            return target.cast(new PercentType(toBigDecimal().multiply(HUNDRED)));
         } else if (target == DecimalType.class) {
-            return new DecimalType(toBigDecimal());
+            return target.cast(new DecimalType(toBigDecimal()));
         } else {
             return State.super.as(target);
         }
@@ -370,6 +392,18 @@ public class QuantityType<T extends Quantity<T>> extends Number
      */
     public QuantityType<?> divide(QuantityType<?> state) {
         return new QuantityType<>(this.quantity.divide(state.quantity));
+    }
+
+    /**
+     * Apply a given offset to this QuantityType
+     *
+     * @param offset the offset to apply
+     * @return changed QuantityType by offset
+     */
+    public QuantityType<T> offset(QuantityType<T> offset, Unit<T> unit) {
+        final Quantity<T> sum = Arrays.asList(quantity, offset.quantity).stream().reduce(QuantityFunctions.sum(unit))
+                .get();
+        return new QuantityType<T>(sum);
     }
 
 }

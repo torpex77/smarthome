@@ -12,14 +12,10 @@
  */
 package org.eclipse.smarthome.binding.digitalstrom.internal;
 
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toSet;
 import static org.eclipse.smarthome.binding.digitalstrom.DigitalSTROMBindingConstants.*;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Stream;
 
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.smarthome.binding.digitalstrom.DigitalSTROMBindingConstants;
@@ -31,7 +27,7 @@ import org.eclipse.smarthome.binding.digitalstrom.handler.ZoneTemperatureControl
 import org.eclipse.smarthome.binding.digitalstrom.internal.discovery.DiscoveryServiceManager;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.manager.ConnectionManager;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.manager.impl.ConnectionManagerImpl;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.serverConnection.constants.JSONApiResponseKeysEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.serverconnection.constants.JSONApiResponseKeysEnum;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -39,6 +35,8 @@ import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
+import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
+import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,27 +47,21 @@ import org.slf4j.LoggerFactory;
  * @author Michael Ochel - Initial contribution
  * @author Mathias Siegele - Initial contribution
  */
+@Component(service = ThingHandlerFactory.class, configurationPid = "binding.digitalstrom")
 public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
 
     private final Logger logger = LoggerFactory.getLogger(DigitalSTROMHandlerFactory.class);
     private final HashMap<String, DiscoveryServiceManager> discoveryServiceManagers = new HashMap<String, DiscoveryServiceManager>();
 
-    /**
-     * Contains all supported {@link ThingTypeUID}'s.
-     */
-    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Stream.of( //
-            SceneHandler.SUPPORTED_THING_TYPES.stream(), //
-            BridgeHandler.SUPPORTED_THING_TYPES.stream(), //
-            DeviceHandler.SUPPORTED_THING_TYPES.stream(), //
-            ZoneTemperatureControlHandler.SUPPORTED_THING_TYPES.stream(), //
-            CircuitHandler.SUPPORTED_THING_TYPES.stream()) //
-            .flatMap(identity()).collect(toSet());
-
     private HashMap<ThingUID, BridgeHandler> bridgeHandlers;
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
-        return SUPPORTED_THING_TYPES.contains(thingTypeUID);
+        return BridgeHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)
+                || SceneHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)
+                || DeviceHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)
+                || ZoneTemperatureControlHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)
+                || CircuitHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID);
     }
 
     @Override
@@ -115,10 +107,6 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
     protected ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
 
-        if (thingTypeUID == null) {
-            return null;
-        }
-
         if (BridgeHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
             BridgeHandler handler = new BridgeHandler((Bridge) thing);
             if (bridgeHandlers == null) {
@@ -152,7 +140,7 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
     private ThingUID getDeviceUID(ThingTypeUID thingTypeUID, ThingUID thingUID, Configuration configuration,
             ThingUID bridgeUID) {
         if (thingUID == null && StringUtils.isNotBlank((String) configuration.get(DEVICE_DSID))) {
-            thingUID = new ThingUID(thingTypeUID, bridgeUID, configuration.get(DEVICE_DSID).toString());
+            return new ThingUID(thingTypeUID, bridgeUID, configuration.get(DEVICE_DSID).toString());
         }
         return thingUID;
     }
@@ -162,7 +150,7 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
         if (thingUID == null) {
             Integer zoneID = ZoneTemperatureControlHandler.getZoneID(configuration, bridgeHandlers.get(bridgeUID));
             if (zoneID > ZoneTemperatureControlHandler.ZONE_ID_NOT_EXISTS) {
-                thingUID = new ThingUID(thingTypeUID, bridgeUID, zoneID.toString());
+                return new ThingUID(thingTypeUID, bridgeUID, zoneID.toString());
             } else {
                 switch (zoneID) {
                     case ZoneTemperatureControlHandler.ZONE_ID_NOT_EXISTS:

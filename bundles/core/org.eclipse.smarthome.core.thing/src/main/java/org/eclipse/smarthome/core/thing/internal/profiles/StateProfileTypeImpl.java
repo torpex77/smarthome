@@ -13,6 +13,7 @@
 package org.eclipse.smarthome.core.thing.internal.profiles;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.thing.profiles.ProfileTypeUID;
@@ -30,11 +31,14 @@ public class StateProfileTypeImpl implements StateProfileType {
     private final ProfileTypeUID profileTypeUID;
     private final String label;
     private final Collection<String> supportedItemTypes;
+    private final Collection<String> supportedItemTypesOfChannel;
 
-    public StateProfileTypeImpl(ProfileTypeUID profileTypeUID, String label, Collection<String> supportedItemTypes) {
+    public StateProfileTypeImpl(ProfileTypeUID profileTypeUID, String label, Collection<String> supportedItemTypes,
+            Collection<String> supportedItemTypesOfChannel) {
         this.profileTypeUID = profileTypeUID;
         this.label = label;
-        this.supportedItemTypes = supportedItemTypes;
+        this.supportedItemTypes = Collections.unmodifiableCollection(supportedItemTypes);
+        this.supportedItemTypesOfChannel = Collections.unmodifiableCollection(supportedItemTypesOfChannel);
     }
 
     @Override
@@ -50,6 +54,11 @@ public class StateProfileTypeImpl implements StateProfileType {
     @Override
     public String getLabel() {
         return label;
+    }
+
+    @Override
+    public Collection<String> getSupportedItemTypesOfChannel() {
+        return supportedItemTypesOfChannel;
     }
 
 }

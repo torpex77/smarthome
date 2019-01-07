@@ -13,6 +13,7 @@
 package org.eclipse.smarthome.model.script.runtime.internal.engine;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,6 +40,10 @@ import org.eclipse.xtext.validation.CheckMode;
 import org.eclipse.xtext.validation.IResourceValidator;
 import org.eclipse.xtext.validation.Issue;
 import org.eclipse.xtext.xbase.XExpression;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +54,7 @@ import org.slf4j.LoggerFactory;
  * @author Oliver Libutzki - Reorganization of Guice injection
  *
  */
+@Component(immediate = true)
 public class ScriptEngineImpl implements ScriptEngine, ModelParser {
 
     protected XtextResourceSet resourceSet;
@@ -60,6 +66,7 @@ public class ScriptEngineImpl implements ScriptEngine, ModelParser {
     public ScriptEngineImpl() {
     }
 
+    @Activate
     public void activate() {
         ScriptStandaloneSetup.doSetup(scriptServiceUtil, this);
         logger.debug("Registered 'script' configuration parser");
@@ -73,6 +80,7 @@ public class ScriptEngineImpl implements ScriptEngine, ModelParser {
         return resourceSet;
     }
 
+    @Deactivate
     public void deactivate() {
         this.resourceSet = null;
         ScriptStandaloneSetup.unregister();
@@ -87,6 +95,7 @@ public class ScriptEngineImpl implements ScriptEngine, ModelParser {
     protected void unsetScriptRuntime(final ScriptRuntime scriptRuntime) {
     }
 
+    @Reference
     protected void setScriptServiceUtil(ScriptServiceUtil scriptServiceUtil) {
         this.scriptServiceUtil = scriptServiceUtil;
         scriptServiceUtil.setScriptEngine(this);
@@ -118,7 +127,8 @@ public class ScriptEngineImpl implements ScriptEngine, ModelParser {
         XtextResourceSet resourceSet = getResourceSet();
         Resource resource = resourceSet.createResource(computeUnusedUri(resourceSet)); // IS-A XtextResource
         try {
-            resource.load(new StringInputStream(scriptAsString), resourceSet.getLoadOptions());
+            resource.load(new StringInputStream(scriptAsString, StandardCharsets.UTF_8.name()),
+                    resourceSet.getLoadOptions());
         } catch (IOException e) {
             throw new ScriptParsingException(
                     "Unexpected IOException; from close() of a String-based ByteArrayInputStream, no real I/O; how is that possible???",

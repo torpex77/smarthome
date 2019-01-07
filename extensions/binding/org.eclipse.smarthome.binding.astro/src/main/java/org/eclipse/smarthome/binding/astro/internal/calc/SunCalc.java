@@ -28,6 +28,7 @@ import org.eclipse.smarthome.binding.astro.internal.util.DateTimeUtils;
  * Calculates the SunPosition (azimuth, elevation) and Sun data.
  *
  * @author Gerhard Riegler - Initial contribution
+ * @author Christoph Weitkamp - Introduced UoM
  * @see based on the calculations of http://www.suncalc.net
  */
 public class SunCalc {
@@ -76,10 +77,12 @@ public class SunCalc {
 
         double azimuth = getAzimuth(th, a, phi, d) / DEG2RAD;
         double elevation = getElevation(th, a, phi, d) / DEG2RAD;
+        double shadeLength = getShadeLength(elevation);
 
         Position position = sun.getPosition();
         position.setAzimuth(azimuth + 180);
         position.setElevation(elevation);
+        position.setShadeLength(shadeLength);
 
         setRadiationInfo(calendar, elevation, altitude, sun);
     }
@@ -121,7 +124,7 @@ public class SunCalc {
         Sun sun = new Sun();
         for (int minutes = 0; minutes <= MINUTES_PER_DAY; minutes += CURVE_TIME_INTERVAL) {
             setPositionalInfo(cal, latitude, longitude, altitude, sun);
-            if (sun.getPosition().getElevation() < SUN_ANGLE) {
+            if (sun.getPosition().getElevationAsDouble() < SUN_ANGLE) {
                 return false;
             }
             cal.add(Calendar.MINUTE, CURVE_TIME_INTERVAL);
@@ -316,6 +319,10 @@ public class SunCalc {
         return Math.asin(Math.sin(phi) * Math.sin(d) + Math.cos(phi) * Math.cos(d) * Math.cos(th - a));
     }
 
+    private double getShadeLength(double elevation) {
+        return 1 / Math.tan(elevation * DEG2RAD);
+    }
+
     private double getHourAngle(double h, double phi, double d) {
         return Math.acos((Math.sin(h) - Math.sin(phi) * Math.sin(d)) / (Math.cos(phi) * Math.cos(d)));
     }
@@ -327,5 +334,4 @@ public class SunCalc {
     private double getSunriseJulianDate(double jtransit, double jset) {
         return jtransit - (jset - jtransit);
     }
-
 }

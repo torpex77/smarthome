@@ -27,16 +27,21 @@ import org.eclipse.smarthome.automation.handler.ModuleHandlerFactory;
 import org.eclipse.smarthome.automation.sample.moduletype.demo.internal.handlers.CompareCondition;
 import org.eclipse.smarthome.automation.sample.moduletype.demo.internal.handlers.ConsolePrintAction;
 import org.eclipse.smarthome.automation.sample.moduletype.demo.internal.handlers.ConsoleTrigger;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * This class is a factory for creating {@link ConsoleTrigger}, {@link CompareCondition} and {@link ConsolePrintAction}
  * objects.
- * 
+ *
  * @author Plamen Peev - Initial contribution
  */
+@Component(immediate = true, service = ModuleHandlerFactory.class)
 public class HandlerFactory extends BaseModuleHandlerFactory implements ModuleHandlerFactory {
 
     /**
@@ -47,12 +52,12 @@ public class HandlerFactory extends BaseModuleHandlerFactory implements ModuleHa
     /**
      * This field contains the types that are supported by this factory.
      */
-    private static final Collection<String> types;
+    private static final Collection<String> TYPES;
 
     /**
      * For error logging if there is a query for a type that is not supported.
      */
-    private static final Logger logger;
+    private static final Logger LOGGER;
 
     /**
      * This blocks fills the Collection ,which contains the types supported by this factory, with supported types and
@@ -63,10 +68,12 @@ public class HandlerFactory extends BaseModuleHandlerFactory implements ModuleHa
         temp.add(CompareCondition.UID);
         temp.add(ConsoleTrigger.UID);
         temp.add(ConsolePrintAction.UID);
-        types = Collections.unmodifiableCollection(temp);
+        TYPES = Collections.unmodifiableCollection(temp);
 
-        logger = LoggerFactory.getLogger(HandlerFactory.class);
+        LOGGER = LoggerFactory.getLogger(HandlerFactory.class);
     }
+
+    private BundleContext bundleContext;
 
     /**
      * This method must deliver the correct handler if this factory can create it or log an error otherwise.
@@ -81,7 +88,7 @@ public class HandlerFactory extends BaseModuleHandlerFactory implements ModuleHa
         } else if (ConsoleTrigger.UID.equals(module.getTypeUID())) {
             return new ConsoleTrigger((Trigger) module, bundleContext);
         } else {
-            logger.error(MODULE_HANDLER_FACTORY_NAME + "Not supported moduleHandler: {}", module.getTypeUID());
+            LOGGER.error(MODULE_HANDLER_FACTORY_NAME + "Not supported moduleHandler: {}", module.getTypeUID());
         }
 
         return null;
@@ -93,24 +100,25 @@ public class HandlerFactory extends BaseModuleHandlerFactory implements ModuleHa
      */
     @Override
     public Collection<String> getTypes() {
-        return types;
+        return TYPES;
     }
 
     /**
      * This method is called when all of the services required by this factory are available.
      *
-     * @param componentContext - the {@link ComponentContext} of the HandlerFactory component.
+     * @param bundleContext - the {@link ComponentContext} of the HandlerFactory component.
      */
-    protected void activate(ComponentContext componentContext) {
-        super.activate(componentContext.getBundleContext());
+    @Activate
+    protected void activate(BundleContext bundleContext) {
+        this.bundleContext = bundleContext;
     }
 
     /**
      * This method is called when a service that is required from this factory becomes unavailable.
-     *
-     * @param componentContext - the {@link ComponentContext} of the HandlerFactory component.
      */
-    protected void deactivate(ComponentContext componentContext) {
+    @Deactivate
+    @Override
+    protected void deactivate() {
         super.deactivate();
     }
 }

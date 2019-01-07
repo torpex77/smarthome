@@ -18,7 +18,9 @@ import java.util.HashMap;
 
 import org.eclipse.smarthome.automation.Module;
 import org.eclipse.smarthome.automation.handler.ModuleHandler;
+import org.eclipse.smarthome.automation.handler.ModuleHandlerFactory;
 import org.eclipse.smarthome.automation.module.script.rulesupport.shared.ScriptedHandler;
+import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,18 +28,19 @@ import org.slf4j.LoggerFactory;
  * The {@link ScriptedPrivateModuleHandlerFactory} is used to provide types for "private" scripted Actions, Triggers and
  * Conditions. These Module Types are meant to be only used inside scripts.
  *
- * This class provides the handlers from the script to the RuleEngine. As Jsr223 languages have different needs, it
+ * This class provides the handlers from the script to the RuleManager. As Jsr223 languages have different needs, it
  * allows these handlers to be defined in different ways.
  *
  * @author Simon Merschjohann
  *
  */
+@Component(immediate = true, service = { ScriptedPrivateModuleHandlerFactory.class, ModuleHandlerFactory.class })
 public class ScriptedPrivateModuleHandlerFactory extends AbstractScriptedModuleHandlerFactory {
     private static final String PRIV_ID = "privId";
     private static final Collection<String> TYPES = Arrays.asList("jsr223.ScriptedAction", "jsr223.ScriptedCondition",
             "jsr223.ScriptedTrigger");
 
-    private Logger logger = LoggerFactory.getLogger(ScriptedPrivateModuleHandlerFactory.class);
+    private final Logger logger = LoggerFactory.getLogger(ScriptedPrivateModuleHandlerFactory.class);
     private final HashMap<String, ScriptedHandler> privateTypes = new HashMap<>();
 
     private int nextId = 0;

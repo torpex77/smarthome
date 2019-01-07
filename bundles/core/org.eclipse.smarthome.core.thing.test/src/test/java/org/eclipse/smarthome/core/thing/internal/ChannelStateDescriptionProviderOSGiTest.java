@@ -51,8 +51,7 @@ import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLink;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLinkRegistry;
 import org.eclipse.smarthome.core.thing.type.ChannelDefinition;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupType;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupTypeUID;
+import org.eclipse.smarthome.core.thing.type.ChannelDefinitionBuilder;
 import org.eclipse.smarthome.core.thing.type.ChannelType;
 import org.eclipse.smarthome.core.thing.type.ChannelTypeProvider;
 import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
@@ -60,7 +59,6 @@ import org.eclipse.smarthome.core.thing.type.DynamicStateDescriptionProvider;
 import org.eclipse.smarthome.core.thing.type.ThingTypeBuilder;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.StateDescription;
-import org.eclipse.smarthome.core.types.StateDescriptionProvider;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.test.java.JavaOSGiTest;
 import org.junit.After;
@@ -81,7 +79,6 @@ public class ChannelStateDescriptionProviderOSGiTest extends JavaOSGiTest {
 
     private ItemRegistry itemRegistry;
     private ItemChannelLinkRegistry linkRegistry;
-    private StateDescriptionProvider stateDescriptionProvider;
 
     @Mock
     private ComponentContext componentContext;
@@ -146,16 +143,6 @@ public class ChannelStateDescriptionProviderOSGiTest extends JavaOSGiTest {
                 }
                 return null;
             }
-
-            @Override
-            public ChannelGroupType getChannelGroupType(ChannelGroupTypeUID channelGroupTypeUID, Locale locale) {
-                return null;
-            }
-
-            @Override
-            public Collection<ChannelGroupType> getChannelGroupTypes(Locale locale) {
-                return Collections.emptySet();
-            }
         });
 
         registerService(new DynamicStateDescriptionProvider() {
@@ -182,14 +169,14 @@ public class ChannelStateDescriptionProviderOSGiTest extends JavaOSGiTest {
         });
 
         List<ChannelDefinition> channelDefinitions = new ArrayList<>();
-        channelDefinitions.add(new ChannelDefinition("1", channelType.getUID()));
-        channelDefinitions.add(new ChannelDefinition("2", channelType2.getUID()));
-        channelDefinitions.add(new ChannelDefinition("3", channelType3.getUID()));
-        channelDefinitions.add(new ChannelDefinition("4", channelType4.getUID()));
-        channelDefinitions.add(new ChannelDefinition("5", channelType5.getUID()));
-        channelDefinitions.add(new ChannelDefinition("6", channelType6.getUID()));
-        channelDefinitions.add(new ChannelDefinition("7_1", channelType7.getUID()));
-        channelDefinitions.add(new ChannelDefinition("7_2", channelType7.getUID()));
+        channelDefinitions.add(new ChannelDefinitionBuilder("1", channelType.getUID()).build());
+        channelDefinitions.add(new ChannelDefinitionBuilder("2", channelType2.getUID()).build());
+        channelDefinitions.add(new ChannelDefinitionBuilder("3", channelType3.getUID()).build());
+        channelDefinitions.add(new ChannelDefinitionBuilder("4", channelType4.getUID()).build());
+        channelDefinitions.add(new ChannelDefinitionBuilder("5", channelType5.getUID()).build());
+        channelDefinitions.add(new ChannelDefinitionBuilder("6", channelType6.getUID()).build());
+        channelDefinitions.add(new ChannelDefinitionBuilder("7_1", channelType7.getUID()).build());
+        channelDefinitions.add(new ChannelDefinitionBuilder("7_2", channelType7.getUID()).build());
 
         registerService(new SimpleThingTypeProvider(Collections.singleton(ThingTypeBuilder
                 .instance(new ThingTypeUID("hue:lamp"), "label").withChannelDefinitions(channelDefinitions).build())));
@@ -206,9 +193,6 @@ public class ChannelStateDescriptionProviderOSGiTest extends JavaOSGiTest {
         registerService(new TestItemProvider(items));
 
         linkRegistry = getService(ItemChannelLinkRegistry.class);
-
-        stateDescriptionProvider = getService(StateDescriptionProvider.class);
-        assertNotNull(stateDescriptionProvider);
     }
 
     @After

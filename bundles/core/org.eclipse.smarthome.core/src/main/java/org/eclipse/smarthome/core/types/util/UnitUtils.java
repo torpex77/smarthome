@@ -12,15 +12,25 @@
  */
 package org.eclipse.smarthome.core.types.util;
 
+import static java.util.stream.Collectors.toSet;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Set;
 
 import javax.measure.Quantity;
 import javax.measure.Unit;
 import javax.measure.UnitConverter;
+import javax.measure.spi.SystemOfUnits;
 
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.internal.library.unit.UnitInitializer;
 import org.eclipse.smarthome.core.library.unit.ImperialUnits;
 import org.eclipse.smarthome.core.library.unit.SIUnits;
 import org.eclipse.smarthome.core.library.unit.SmartHomeUnits;
@@ -30,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import tec.uom.se.quantity.Quantities;
 import tec.uom.se.unit.MetricPrefix;
 import tec.uom.se.unit.TransformedUnit;
+import tec.uom.se.unit.Units;
 
 /**
  * A utility for parsing dimensions to interface classes of {@link Quantity} and parsing units from format strings.
@@ -40,13 +51,20 @@ import tec.uom.se.unit.TransformedUnit;
 @NonNullByDefault
 public class UnitUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(UnitUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UnitUtils.class);
 
     public static final String UNIT_PLACEHOLDER = "%unit%";
     public static final String UNIT_PERCENT_FORMAT_STRING = "%%";
 
     private static final String JAVAX_MEASURE_QUANTITY_PREFIX = "javax.measure.quantity.";
     private static final String FRAMEWORK_DIMENSION_PREFIX = "org.eclipse.smarthome.core.library.dimension.";
+
+    private static final Collection<Class<? extends SystemOfUnits>> ALL_SYSTEM_OF_UNITS = Arrays.asList(SIUnits.class,
+            ImperialUnits.class, SmartHomeUnits.class, Units.class);
+
+    static {
+        UnitInitializer.init();
+    }
 
     /**
      * Parses a String denoting a dimension (e.g. Length, Temperature, Mass,..) into a {@link Class} instance of an
@@ -76,24 +94,68 @@ public class UnitUtils {
     }
 
     /**
-     * A utility method to parse a unit symbol from a given pattern (like stateDescription or widget label).
-     * The unit is always expected to be the last part of the pattern separated by " " (e.g. "%.2f °C" for °C).
+     * The name of the dimension as stated in the ChannelType configuration.
+     * e.g.
+     * <p>
+     * <code> Unit: 'm' -> "Length"</code>
+     * <p>
+     * <code> Unit: 'kWh' -> "Energy"</code>
+     * <p>
+     * If the {@link Unit} can not be found in any of the available Measurement systems, it returns <code>null</code>
      *
-     * @param pattern The pattern to extract the unit symbol from.
-     * @return the unit symbol extracted from the pattern or {@code null} if the pattern did not match the expected
-     *         format.
+     * @param unit The {@link Unit} to get the Dimension's name from.
+     * @return The Dimension string or null if the unit can not be found in any of the SystemOfUnits.
+     */
+    public static @Nullable String getDimensionName(Unit<?> unit) {
+        for (Class<? extends SystemOfUnits> system : ALL_SYSTEM_OF_UNITS) {
+            for (Field field : system.getDeclaredFields()) {
+                if (field.getType().isAssignableFrom(Unit.class) && Modifier.isStatic(field.getModifiers())) {
+
+                    Type genericType = field.getGenericType();
+                    if (genericType instanceof ParameterizedType) {
+                        String dimension = ((Class<?>) ((ParameterizedType) genericType).getActualTypeArguments()[0])
+                                .getSimpleName();
+                        Unit<?> systemUnit;
+                        try {
+                            systemUnit = (Unit<?>) field.get(null);
+                            if (systemUnit == null) {
+                                LOGGER.warn("Unit field points to a null value: {}", field);
+                            } else if (systemUnit.isCompatible(unit)) {
+                                return dimension;
+                            }
+                        } catch (IllegalArgumentException | IllegalAccessException e) {
+                            LOGGER.error("The unit field '{}' seems to be not accessible", field, e);
+                        }
+                    } else {
+                        LOGGER.warn("There is a unit field defined which has no generic type parametrization: {}",
+                                field);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A utility method to parse a unit symbol either directly or from a given pattern (like stateDescription or widget
+     * label). In the latter case, the unit is expected to be the last part of the pattern separated by " " (e.g. "%.2f
+     * °C" for °C).
+     *
+     * @param stringWithUnit the string to extract the unit symbol from
+     * @return the unit symbol extracted from the string or {@code null} if no unit could be parsed
+     *
      */
     public static @Nullable Unit<?> parseUnit(String pattern) {
         if (StringUtils.isBlank(pattern)) {
             return null;
         }
 
+        String unitSymbol = pattern;
         int lastBlankIndex = pattern.lastIndexOf(" ");
-        if (lastBlankIndex < 0) {
-            return null;
+        if (lastBlankIndex >= 0) {
+            unitSymbol = pattern.substring(lastBlankIndex).trim();
         }
 
-        String unitSymbol = pattern.substring(lastBlankIndex).trim();
         if (StringUtils.isNotBlank(unitSymbol) && !unitSymbol.equals(UNIT_PLACEHOLDER)) {
             if (UNIT_PERCENT_FORMAT_STRING.equals(unitSymbol)) {
                 return SmartHomeUnits.PERCENT;
@@ -103,7 +165,7 @@ public class UnitUtils {
                 return quantity.getUnit();
             } catch (IllegalArgumentException e) {
                 // we expect this exception in case the extracted string does not match any known unit
-                logger.debug("Unknown unit from pattern: {}", unitSymbol);
+                LOGGER.debug("Unknown unit from pattern: {}", unitSymbol);
             }
         }
 
@@ -111,11 +173,11 @@ public class UnitUtils {
     }
 
     public static boolean isDifferentMeasurementSystem(Unit<? extends Quantity<?>> thisUnit, Unit<?> thatUnit) {
-        Set<? extends Unit<?>> SI = SIUnits.getInstance().getUnits();
-        Set<? extends Unit<?>> US = ImperialUnits.getInstance().getUnits();
+        Set<? extends Unit<?>> siUnits = SIUnits.getInstance().getUnits();
+        Set<? extends Unit<?>> usUnits = ImperialUnits.getInstance().getUnits();
 
-        boolean differentSystems = (SI.contains(thisUnit) && US.contains(thatUnit)) //
-                || (SI.contains(thatUnit) && US.contains(thisUnit));
+        boolean differentSystems = (siUnits.contains(thisUnit) && usUnits.contains(thatUnit)) //
+                || (siUnits.contains(thatUnit) && usUnits.contains(thisUnit));
 
         if (!differentSystems) {
             if (thisUnit instanceof TransformedUnit
@@ -127,6 +189,15 @@ public class UnitUtils {
                     && isMetricConversion(((TransformedUnit<?>) thatUnit).getConverter())) {
                 return isDifferentMeasurementSystem(thisUnit, ((TransformedUnit<?>) thatUnit).getParentUnit());
             }
+        }
+
+        // Compare the unit symbols. For product units (e.g. 1km / 1h) the equality is not given in the Sets above.
+        if (!differentSystems) {
+            Set<String> siSymbols = siUnits.stream().map(Unit::getSymbol).collect(toSet());
+            Set<String> usSymbols = usUnits.stream().map(Unit::getSymbol).collect(toSet());
+
+            differentSystems = (siSymbols.contains(thisUnit.getSymbol()) && usSymbols.contains(thatUnit.getSymbol())) //
+                    || (siSymbols.contains(thatUnit.getSymbol()) && usSymbols.contains(thisUnit.getSymbol()));
         }
 
         return differentSystems;

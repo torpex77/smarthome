@@ -12,7 +12,9 @@
  */
 package org.eclipse.smarthome.binding.bluetooth;
 
-import org.eclipse.jdt.annotation.NonNull;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.binding.bluetooth.notification.BluetoothConnectionStatusNotification;
 import org.eclipse.smarthome.binding.bluetooth.notification.BluetoothScanNotification;
 import org.eclipse.smarthome.core.library.types.DecimalType;
@@ -32,16 +34,24 @@ import org.eclipse.smarthome.core.types.UnDefType;
  * used as a base implementation for more specific thing handlers.
  *
  * @author Kai Kreuzer - Initial contribution and API
- *
  */
+@NonNullByDefault
 public class BeaconBluetoothHandler extends BaseThingHandler implements BluetoothDeviceListener {
 
+    @NonNullByDefault({} /* non-null if initialized */)
     protected BluetoothAdapter adapter;
+
+    @NonNullByDefault({} /* non-null if initialized */)
     protected BluetoothAddress address;
+
+    @NonNullByDefault({} /* non-null if initialized */)
     protected BluetoothDevice device;
 
-    public BeaconBluetoothHandler(@NonNull Thing thing) {
+    protected final ReentrantLock deviceLock;
+
+    public BeaconBluetoothHandler(Thing thing) {
         super(thing);
+        deviceLock = new ReentrantLock();
     }
 
     @Override
@@ -67,17 +77,28 @@ public class BeaconBluetoothHandler extends BaseThingHandler implements Bluetoot
         }
 
         adapter = (BluetoothAdapter) bridgeHandler;
-        device = adapter.getDevice(address);
-        device.addListener(this);
+
+        try {
+            deviceLock.lock();
+            device = adapter.getDevice(address);
+            device.addListener(this);
+        } finally {
+            deviceLock.unlock();
+        }
 
         updateStatus(ThingStatus.UNKNOWN);
     }
 
     @Override
     public void dispose() {
-        if (device != null) {
-            device.removeListener(this);
-            device = null;
+        try {
+            deviceLock.lock();
+            if (device != null) {
+                device.removeListener(this);
+                device = null;
+            }
+        } finally {
+            deviceLock.unlock();
         }
     }
 
@@ -121,12 +142,14 @@ public class BeaconBluetoothHandler extends BaseThingHandler implements Bluetoot
     @Override
     public void onScanRecordReceived(BluetoothScanNotification scanNotification) {
         int rssi = scanNotification.getRssi();
-        device.setRssi(rssi);
-        updateRSSI();
+        if (rssi != Integer.MIN_VALUE) {
+            device.setRssi(rssi);
+            updateRSSI();
+        }
     }
 
     @Override
-    public void onConnectionStateChange(@NonNull BluetoothConnectionStatusNotification connectionNotification) {
+    public void onConnectionStateChange(BluetoothConnectionStatusNotification connectionNotification) {
     }
 
     @Override
@@ -134,21 +157,20 @@ public class BeaconBluetoothHandler extends BaseThingHandler implements Bluetoot
     }
 
     @Override
-    public void onCharacteristicReadComplete(@NonNull BluetoothCharacteristic characteristic,
-            @NonNull BluetoothCompletionStatus status) {
+    public void onCharacteristicReadComplete(BluetoothCharacteristic characteristic, BluetoothCompletionStatus status) {
     }
 
     @Override
-    public void onCharacteristicWriteComplete(@NonNull BluetoothCharacteristic characteristic,
-            @NonNull BluetoothCompletionStatus status) {
+    public void onCharacteristicWriteComplete(BluetoothCharacteristic characteristic,
+            BluetoothCompletionStatus status) {
     }
 
     @Override
-    public void onCharacteristicUpdate(@NonNull BluetoothCharacteristic characteristic) {
+    public void onCharacteristicUpdate(BluetoothCharacteristic characteristic) {
     }
 
     @Override
-    public void onDescriptorUpdate(@NonNull BluetoothDescriptor bluetoothDescriptor) {
+    public void onDescriptorUpdate(BluetoothDescriptor bluetoothDescriptor) {
     }
 
 }

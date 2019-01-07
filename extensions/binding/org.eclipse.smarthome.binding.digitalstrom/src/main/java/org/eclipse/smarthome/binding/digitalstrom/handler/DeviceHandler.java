@@ -30,14 +30,14 @@ import org.eclipse.smarthome.binding.digitalstrom.internal.lib.config.Config;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.listener.DeviceStatusListener;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.Device;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.GeneralDeviceInformation;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.DeviceSceneSpec;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.DeviceStateUpdate;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.constants.ChangeableDeviceConfigEnum;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.constants.DeviceBinarayInputEnum;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.constants.OutputModeEnum;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.constants.SensorEnum;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.impl.DeviceBinaryInput;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.impl.DeviceStateUpdateImpl;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.DeviceSceneSpec;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.DeviceStateUpdate;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.ChangeableDeviceConfigEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.DeviceBinarayInputEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.OutputModeEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.SensorEnum;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.impl.DeviceBinaryInput;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.impl.DeviceStateUpdateImpl;
 import org.eclipse.smarthome.binding.digitalstrom.internal.providers.DsChannelTypeProvider;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.DecimalType;
@@ -83,10 +83,10 @@ public class DeviceHandler extends BaseThingHandler implements DeviceStatusListe
     /**
      * Contains all supported thing types of this handler, will be filled by DsDeviceThingTypeProvider.
      */
-    public static Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>();
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>();
 
-    public static String TWO_STAGE_SWITCH_IDENTICATOR = "2";
-    public static String THREE_STAGE_SWITCH_IDENTICATOR = "3";
+    public static final String TWO_STAGE_SWITCH_IDENTICATOR = "2";
+    public static final String THREE_STAGE_SWITCH_IDENTICATOR = "3";
 
     private String dSID;
     private Device device;
@@ -110,8 +110,9 @@ public class DeviceHandler extends BaseThingHandler implements DeviceStatusListe
         logger.debug("Initializing DeviceHandler.");
         if (StringUtils.isNotBlank((String) getConfig().get(DigitalSTROMBindingConstants.DEVICE_DSID))) {
             dSID = getConfig().get(DigitalSTROMBindingConstants.DEVICE_DSID).toString();
-            if (getBridge() != null) {
-                bridgeStatusChanged(getBridge().getStatusInfo());
+            final Bridge bridge = getBridge();
+            if (bridge != null) {
+                bridgeStatusChanged(bridge.getStatusInfo());
             } else {
                 // Set status to OFFLINE if no bridge is available e.g. because the bridge has been removed and the
                 // Thing was reinitialized.
@@ -413,7 +414,8 @@ public class DeviceHandler extends BaseThingHandler implements DeviceStatusListe
         if (value <= 0 || max <= 0) {
             return 0;
         }
-        return new BigDecimal(value * ((float) 100 / max)).setScale(0, BigDecimal.ROUND_HALF_UP).intValue();
+        int percentValue = new BigDecimal(value * ((float) 100 / max)).setScale(0, BigDecimal.ROUND_HALF_UP).intValue();
+        return percentValue < 0 ? 0 : percentValue > 100 ? 100 : percentValue;
     }
 
     @Override
@@ -421,7 +423,7 @@ public class DeviceHandler extends BaseThingHandler implements DeviceStatusListe
         if (device instanceof Device) {
             this.device = null;
             if (this.getThing().getStatus().equals(ThingStatus.ONLINE)) {
-                if (device != null && !((Device) device).isPresent()) {
+                if (!((Device) device).isPresent()) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE,
                             "Device is not present in the digitalSTROM-System.");
                 } else {
@@ -718,7 +720,7 @@ public class DeviceHandler extends BaseThingHandler implements DeviceStatusListe
         logger.debug("load channel: typeID={}, itemType={}",
                 DsChannelTypeProvider.getOutputChannelTypeID(device.getFunctionalColorGroup(), device.getOutputMode()),
                 DsChannelTypeProvider.getItemType(channelTypeID));
-        if (channelTypeID != null && (currentChannel == null || currentChannel != channelTypeID)) {
+        if (channelTypeID != null && (currentChannel == null || !currentChannel.equals(channelTypeID))) {
             loadOutputChannel(new ChannelTypeUID(BINDING_ID, channelTypeID),
                     DsChannelTypeProvider.getItemType(channelTypeID));
         }
@@ -930,7 +932,7 @@ public class DeviceHandler extends BaseThingHandler implements DeviceStatusListe
                 logger.debug("Save scene configuration: [{}] to thing with UID {}", saveScene, getThing().getUID());
                 super.updateProperty(key, saveScene);
                 // persist the new property
-                super.updateThing(getThing());
+                // super.updateThing(editThing().build());
             }
         }
 

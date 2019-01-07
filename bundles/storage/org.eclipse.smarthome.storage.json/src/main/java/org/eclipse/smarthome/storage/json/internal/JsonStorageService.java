@@ -13,6 +13,8 @@
 package org.eclipse.smarthome.storage.json.internal;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,6 +22,9 @@ import org.eclipse.smarthome.config.core.ConfigConstants;
 import org.eclipse.smarthome.core.storage.Storage;
 import org.eclipse.smarthome.core.storage.StorageService;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +34,15 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chris Jackson - Initial Contribution
  */
+@Component(name = "org.eclipse.smarthome.storage.json", immediate = true, property = { //
+        "service.pid=org.eclipse.smarthome.storage.json", //
+        "service.config.description.uri=system:json_storage", //
+        "service.config.label=Json Storage", //
+        "service.config.category=system", //
+        "storage.format=json" })
 public class JsonStorageService implements StorageService {
+
+    private static final int MAX_FILENAME_LENGTH = 127;
 
     private final Logger logger = LoggerFactory.getLogger(JsonStorageService.class);
 
@@ -46,6 +59,7 @@ public class JsonStorageService implements StorageService {
 
     private final Map<String, JsonStorage<Object>> storageList = new HashMap<String, JsonStorage<Object>>();
 
+    @Activate
     protected void activate(ComponentContext cContext, Map<String, Object> properties) {
         dbFolderName = ConfigConstants.getUserDataFolder() + File.separator + dbFolderName;
         File folder = new File(dbFolderName);
@@ -88,6 +102,7 @@ public class JsonStorageService implements StorageService {
         }
     }
 
+    @Deactivate
     protected void deactivate() {
         // Since we're using a delayed commit, we need to write out any data
         for (JsonStorage<Object> storage : storageList.values()) {
@@ -96,19 +111,47 @@ public class JsonStorageService implements StorageService {
         logger.debug("Json Storage Service: Deactivated.");
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> Storage<T> getStorage(String name, ClassLoader classLoader) {
-        File file = new File(dbFolderName, name + ".json");
+        File legacyFile = new File(dbFolderName, name + ".json");
+        File escapedFile = new File(dbFolderName, urlEscapeUnwantedChars(name) + ".json");
 
-        if (!storageList.containsKey(name)) {
-            storageList.put(name, (JsonStorage<Object>) new JsonStorage<T>(file, classLoader, maxBackupFiles,
-                    writeDelay, maxDeferredPeriod));
+        File file = escapedFile;
+        if (legacyFile.exists()) {
+            file = legacyFile;
         }
-        return (Storage<T>) storageList.get(name);
+
+        JsonStorage<T> newStorage = new JsonStorage<T>(file, classLoader, maxBackupFiles, writeDelay,
+                maxDeferredPeriod);
+
+        JsonStorage<Object> oldStorage = storageList.put(name, (JsonStorage<Object>) newStorage);
+        if (oldStorage != null) {
+            oldStorage.commitDatabase();
+        }
+        return newStorage;
     }
 
     @Override
     public <T> Storage<T> getStorage(String name) {
         return getStorage(name, null);
+    }
+
+    /**
+     * Escapes all invalid url characters and strips the maximum length to 127 to be used as a file name
+     *
+     * @param s the string to be escaped
+     * @return url-encoded string or the original string if UTF-8 is not supported on the system
+     */
+    protected String urlEscapeUnwantedChars(String s) {
+        String result;
+        try {
+            result = URLEncoder.encode(s, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            logger.warn("Encoding UTF-8 is not supported, might generate invalid filenames.");
+            result = s;
+        }
+        int length = Math.min(result.length(), MAX_FILENAME_LENGTH);
+        return result.substring(0, length);
     }
 }

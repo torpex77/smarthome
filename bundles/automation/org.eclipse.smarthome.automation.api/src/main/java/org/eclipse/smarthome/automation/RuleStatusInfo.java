@@ -13,7 +13,7 @@
 package org.eclipse.smarthome.automation;
 
 /**
- * This class is used to present status of rule. The status consists out of three parts:
+ * This class is used to present status of a rule. The status consists of three parts:
  * The main status, a status detail and a string description.
  *
  * @author Yordan Mihaylov - Initial contribution
@@ -44,7 +44,7 @@ public class RuleStatusInfo {
     /**
      * Constructs a status info.
      *
-     * @param status the status (must not be null)
+     * @param status       the status (must not be null)
      * @param statusDetail the detail of the status (must not be null)
      * @throws IllegalArgumentException if status or status detail is null
      */
@@ -55,9 +55,9 @@ public class RuleStatusInfo {
     /**
      * Constructs a status info.
      *
-     * @param status the status (must not be null)
+     * @param status       the status (must not be null)
      * @param statusDetail the detail of the status (must not be null)
-     * @param description the description of the status
+     * @param description  the description of the status
      * @throws IllegalArgumentException if status or status detail is null
      */
     public RuleStatusInfo(RuleStatus status, RuleStatusDetail statusDetail, String description)

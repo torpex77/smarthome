@@ -12,6 +12,9 @@
  */
 package org.eclipse.smarthome.config.discovery.inbox.events;
 
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
 import org.eclipse.smarthome.config.discovery.dto.DiscoveryResultDTO;
 import org.eclipse.smarthome.config.discovery.dto.DiscoveryResultDTOMapper;
@@ -19,8 +22,6 @@ import org.eclipse.smarthome.core.events.AbstractEventFactory;
 import org.eclipse.smarthome.core.events.Event;
 import org.eclipse.smarthome.core.events.EventFactory;
 import org.osgi.service.component.annotations.Component;
-
-import com.google.common.collect.Sets;
 
 /**
  * An {@link InboxEventFactory} is responsible for creating inbox event instances.
@@ -30,17 +31,18 @@ import com.google.common.collect.Sets;
 @Component(immediate = true, service = EventFactory.class)
 public class InboxEventFactory extends AbstractEventFactory {
 
-    private static final String INBOX_ADDED_EVENT_TOPIC = "smarthome/inbox/{thingUID}/added";
+    static final String INBOX_ADDED_EVENT_TOPIC = "smarthome/inbox/{thingUID}/added";
 
-    private static final String INBOX_REMOVED_EVENT_TOPIC = "smarthome/inbox/{thingUID}/removed";
+    static final String INBOX_REMOVED_EVENT_TOPIC = "smarthome/inbox/{thingUID}/removed";
 
-    private static final String INBOX_UPDATED_EVENT_TOPIC = "smarthome/inbox/{thingUID}/updated";
+    static final String INBOX_UPDATED_EVENT_TOPIC = "smarthome/inbox/{thingUID}/updated";
 
     /**
      * Constructs a new InboxEventFactory.
      */
     public InboxEventFactory() {
-        super(Sets.newHashSet(InboxAddedEvent.TYPE, InboxUpdatedEvent.TYPE, InboxRemovedEvent.TYPE));
+        super(Stream.of(InboxAddedEvent.TYPE, InboxUpdatedEvent.TYPE, InboxRemovedEvent.TYPE)
+                .collect(Collectors.toSet()));
     }
 
     @Override

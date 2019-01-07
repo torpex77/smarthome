@@ -99,7 +99,27 @@ public class MappingUriExtensions extends UriExtensions {
         }
         logger.debug("Path mapping could not be done for '{}', leaving it untouched", pathWithScheme);
         java.net.URI javaNetUri = java.net.URI.create(pathWithScheme);
-        return URI.createURI(super.toPath(javaNetUri));
+        return URI.createURI(toPathAsInXtext212(javaNetUri));
+    }
+
+    @Override
+    public String toUriString(URI uri) {
+        if (clientLocation == null) {
+            return uri.toString();
+        }
+        return mapToClientPath(uri.toString());
+    }
+
+    @Override
+    public String toUriString(java.net.URI uri) {
+        return toUriString(URI.createURI(uri.toString()));
+    }
+
+    private String mapToClientPath(String pathWithScheme) {
+        String clientPath = toPathAsInXtext212(
+                java.net.URI.create(pathWithScheme.replace(serverLocation, clientLocation)));
+        logger.trace("Mapping server path {} to client path {}", pathWithScheme, clientPath);
+        return clientPath;
     }
 
     protected final String removeTrailingSlash(String path) {
@@ -158,13 +178,35 @@ public class MappingUriExtensions extends UriExtensions {
     private URI map(String pathWithScheme) {
         java.net.URI javaNetUri = toURI(pathWithScheme, clientLocation);
         logger.trace("Going to map path {}", javaNetUri);
-        URI ret = URI.createURI(super.toPath(javaNetUri));
+        URI ret = URI.createURI(toPathAsInXtext212(javaNetUri));
         logger.trace("Mapped path {} to {}", pathWithScheme, ret);
         return ret;
     }
 
     private java.net.URI toURI(String pathWithScheme, String currentPath) {
         return java.net.URI.create(pathWithScheme.replace(currentPath, serverLocation));
+    }
+
+    private String toPathAsInXtext212(java.net.URI uri) {
+        // org.eclipse.xtext.ide.server.UriExtensions:
+        // In Xtext 2.14 the method "String toPath(java.netURI)" has been deprecated but still exist.
+        // It delegate the logic internally to the new method "String toUriString(java.net.URI uri)".
+        // That new method seems to return a different result for folder / directories with respect to
+        // the present / absent of a trailing slash.
+
+        // The old logic removes trailing slashes if it has been present in the input.
+        // The new logic keeps trailing slashes if it has been present in the input.
+
+        // input: file:///d/
+        // output old: file:///d
+        // output new: file:///d
+
+        // input: file:///d/
+        // output old: file:///d
+        // output new: file:///d/
+
+        // We use this method now to keep the old behavior.
+        return Paths.get(uri).toUri().toString();
     }
 
 }

@@ -20,10 +20,13 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 
+import org.eclipse.smarthome.core.i18n.TranslationProvider;
 import org.eclipse.smarthome.ui.icon.AbstractResourceIconProvider;
 import org.eclipse.smarthome.ui.icon.IconProvider;
 import org.eclipse.smarthome.ui.icon.IconSet;
 import org.eclipse.smarthome.ui.icon.IconSet.Format;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,11 +36,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author Kai Kreuzer - Initial contribution
  */
+@Component
 public class ClassicIconProvider extends AbstractResourceIconProvider implements IconProvider {
 
     private final Logger logger = LoggerFactory.getLogger(ClassicIconProvider.class);
 
-    static String ICONSET_ID = "classic";
+    static final String ICONSET_ID = "classic";
 
     @Override
     public Set<IconSet> getIconSets(Locale locale) {
@@ -53,7 +57,7 @@ public class ClassicIconProvider extends AbstractResourceIconProvider implements
 
     @Override
     protected InputStream getResource(String iconSetId, String resourceName) {
-        if (ICONSET_ID.equals(iconSetId)) {
+        if (ClassicIconProvider.ICONSET_ID.equals(iconSetId)) {
             URL iconResource = context.getBundle().getEntry("icons/" + resourceName);
             try {
                 return iconResource.openStream();
@@ -68,7 +72,7 @@ public class ClassicIconProvider extends AbstractResourceIconProvider implements
 
     @Override
     protected boolean hasResource(String iconSetId, String resourceName) {
-        if (ICONSET_ID.equals(iconSetId)) {
+        if (ClassicIconProvider.ICONSET_ID.equals(iconSetId)) {
             URL iconResource = context.getBundle().getEntry("icons/" + resourceName);
             return iconResource != null;
         } else {
@@ -79,6 +83,17 @@ public class ClassicIconProvider extends AbstractResourceIconProvider implements
     @Override
     protected Integer getPriority() {
         return 0;
+    }
+
+    @Override
+    @Reference
+    protected void setTranslationProvider(TranslationProvider i18nProvider) {
+        super.setTranslationProvider(i18nProvider);
+    }
+
+    @Override
+    protected void unsetTranslationProvider(TranslationProvider i18nProvider) {
+        super.unsetTranslationProvider(i18nProvider);
     }
 
 }

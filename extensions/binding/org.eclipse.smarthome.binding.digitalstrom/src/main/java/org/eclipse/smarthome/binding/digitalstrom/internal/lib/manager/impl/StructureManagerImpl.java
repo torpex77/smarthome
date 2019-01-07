@@ -24,8 +24,8 @@ import org.eclipse.smarthome.binding.digitalstrom.internal.lib.manager.Structure
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.AbstractGeneralDeviceInformations;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.Circuit;
 import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.Device;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.CachedMeteringValue;
-import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceParameters.impl.DSID;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.CachedMeteringValue;
+import org.eclipse.smarthome.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.impl.DSID;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -78,7 +78,7 @@ public class StructureManagerImpl implements StructureManager {
     private final Map<Integer, HashMap<Short, List<Device>>> zoneGroupDeviceMap = Collections
             .synchronizedMap(new HashMap<Integer, HashMap<Short, List<Device>>>());
     private final Map<DSID, Device> deviceMap = Collections.synchronizedMap(new HashMap<DSID, Device>());
-    private final Map<DSID, Circuit> circuitMap = Collections.synchronizedMap(new HashMap<DSID, Circuit>());;
+    private final Map<DSID, Circuit> circuitMap = Collections.synchronizedMap(new HashMap<DSID, Circuit>());
     private final Map<String, DSID> dSUIDToDSIDMap = Collections.synchronizedMap(new HashMap<String, DSID>());
 
     private Map<Integer, ZoneGroupsNameAndIDMap> zoneGroupIdNameMap;
@@ -254,10 +254,11 @@ public class StructureManagerImpl implements StructureManager {
 
     @Override
     public void updateDevice(int oldZone, List<Short> oldGroups, Device device) {
-        if (oldZone == -1) {
-            oldZone = device.getZoneId();
+        int intOldZoneID = oldZone;
+        if (intOldZoneID == -1) {
+            intOldZoneID = device.getZoneId();
         }
-        deleteDevice(oldZone, oldGroups, device);
+        deleteDevice(intOldZoneID, oldGroups, device);
         addDeviceToStructure(device);
     }
 
@@ -293,15 +294,17 @@ public class StructureManagerImpl implements StructureManager {
     }
 
     private boolean deleteDevice(int zoneID, List<Short> groups, Device device) {
-        if (groups != null || zoneID >= 0) {
-            if (groups == null) {
-                groups = device.getGroups();
+        List<Short> intGroups = groups;
+        int intZoneID = zoneID;
+        if (intGroups != null || intZoneID >= 0) {
+            if (intGroups == null) {
+                intGroups = device.getGroups();
             }
-            if (zoneID == -1) {
-                zoneID = device.getZoneId();
+            if (intZoneID == -1) {
+                intZoneID = device.getZoneId();
             }
-            for (Short groupID : groups) {
-                List<Device> deviceList = getReferenceDeviceListFromZoneXGroupX(zoneID, groupID);
+            for (Short groupID : intGroups) {
+                List<Device> deviceList = getReferenceDeviceListFromZoneXGroupX(intZoneID, groupID);
                 if (deviceList != null) {
                     deviceList.remove(device);
                 }

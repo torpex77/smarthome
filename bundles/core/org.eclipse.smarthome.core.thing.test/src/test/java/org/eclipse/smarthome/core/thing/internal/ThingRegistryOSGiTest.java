@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -45,11 +46,11 @@ import org.eclipse.smarthome.core.thing.events.ThingAddedEvent;
 import org.eclipse.smarthome.core.thing.events.ThingRemovedEvent;
 import org.eclipse.smarthome.core.thing.events.ThingUpdatedEvent;
 import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.test.AsyncResultWrapper;
 import org.eclipse.smarthome.test.java.JavaOSGiTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.osgi.framework.ServiceRegistration;
 
 /**
  * {@link ThingRegistryOSGiTest} tests the {@link ThingRegistry}.
@@ -60,7 +61,7 @@ import org.junit.Test;
 public class ThingRegistryOSGiTest extends JavaOSGiTest {
 
     ManagedThingProvider managedThingProvider;
-    ThingHandlerFactory thingHandlerFactory;
+    ServiceRegistration<?> thingHandlerFactoryServiceReg;
 
     private static final ThingTypeUID THING_TYPE_UID = new ThingTypeUID("binding:type");
     private static final ThingUID THING_UID = new ThingUID(THING_TYPE_UID, "id");
@@ -200,7 +201,7 @@ public class ThingRegistryOSGiTest extends JavaOSGiTest {
         ThingUID expectedBridgeUID = new ThingUID(THING_TYPE_UID, THING2_ID);
         String expectedLabel = "Test Thing";
 
-        AsyncResultWrapper<Thing> thingResultWrapper = new AsyncResultWrapper<Thing>();
+        AtomicReference<Thing> thingResultWrapper = new AtomicReference<Thing>();
 
         ThingRegistry thingRegistry = getService(ThingRegistry.class);
 
@@ -234,20 +235,20 @@ public class ThingRegistryOSGiTest extends JavaOSGiTest {
         Thing thing = thingRegistry.createThingOfType(expectedThingTypeUID, expectedThingUID, expectedBridgeUID,
                 expectedLabel, expectedConfiguration);
         waitForAssert(() -> {
-            assertTrue(thingResultWrapper.isSet());
+            assertTrue(thingResultWrapper.get() != null);
         });
-        assertThat(thing, is(thingResultWrapper.getWrappedObject()));
+        assertThat(thing, is(thingResultWrapper.get()));
     }
 
     private void registerThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
         unregisterCurrentThingHandlerFactory();
-        this.thingHandlerFactory = thingHandlerFactory;
-        registerService(thingHandlerFactory, ThingHandlerFactory.class.getName());
+        thingHandlerFactoryServiceReg = registerService(thingHandlerFactory, ThingHandlerFactory.class.getName());
     }
 
     private void unregisterCurrentThingHandlerFactory() {
-        if (this.thingHandlerFactory != null) {
-            unregisterService(thingHandlerFactory);
+        if (thingHandlerFactoryServiceReg != null) {
+            unregisterService(thingHandlerFactoryServiceReg);
+            thingHandlerFactoryServiceReg = null;
         }
     }
 
