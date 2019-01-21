@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -73,6 +73,15 @@ public class SensorId {
     }
 
     /**
+     * get the path of this sensorId
+     *
+     * @return path without sensor id (including hub parts, separated by "/" characters)
+     */
+    public String getPath() {
+        return path;
+    }
+
+    /**
      * get family id (first to characters of sensor id)
      *
      * @return the family id
@@ -87,6 +96,11 @@ public class SensorId {
     }
 
     @Override
+    public int hashCode() {
+        return this.fullPath.hashCode();
+    }
+
+    @Override
     public boolean equals(@Nullable Object o) {
         if (o == this) {
             return true;
@@ -96,6 +110,6 @@ public class SensorId {
             return false;
         }
 
-        return ((SensorId) o).getFullPath().equals(getFullPath());
+        return ((SensorId) o).fullPath.equals(fullPath);
     }
 }

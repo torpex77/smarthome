@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -16,17 +16,19 @@ import static org.eclipse.smarthome.binding.onewire.internal.OwBindingConstants.
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.binding.onewire.internal.DS2438Configuration;
 import org.eclipse.smarthome.binding.onewire.internal.OwDynamicStateDescriptionProvider;
 import org.eclipse.smarthome.binding.onewire.internal.OwException;
-import org.eclipse.smarthome.binding.onewire.internal.OwPageBuffer;
-import org.eclipse.smarthome.binding.onewire.internal.Util;
+import org.eclipse.smarthome.binding.onewire.internal.SensorId;
 import org.eclipse.smarthome.binding.onewire.internal.device.DS18x20;
 import org.eclipse.smarthome.binding.onewire.internal.device.DS2406_DS2413;
 import org.eclipse.smarthome.binding.onewire.internal.device.DS2438;
@@ -34,14 +36,11 @@ import org.eclipse.smarthome.binding.onewire.internal.device.DS2438.LightSensorT
 import org.eclipse.smarthome.binding.onewire.internal.device.OwSensorType;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
 import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,19 +54,31 @@ import org.slf4j.LoggerFactory;
 public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<>(
             Arrays.asList(THING_TYPE_AMS, THING_TYPE_BMS));
+    public static final Set<OwSensorType> SUPPORTED_SENSOR_TYPES = Collections
+            .unmodifiableSet(Stream.of(OwSensorType.AMS, OwSensorType.AMS_S, OwSensorType.BMS, OwSensorType.BMS_S)
+                    .collect(Collectors.toSet()));
+
+    private static final String PROPERTY_DS18B20 = "ds18b20";
+    private static final String PROPERTY_DS2413 = "ds2413";
+    private static final String PROPERTY_DS2438 = "ds2438";
+    private static final Set<String> REQUIRED_PROPERTIES_AMS = Collections.unmodifiableSet(
+            Stream.of(PROPERTY_HW_REVISION, PROPERTY_PROD_DATE, PROPERTY_DS18B20, PROPERTY_DS2438, PROPERTY_DS2413)
+                    .collect(Collectors.toSet()));
+    private static final Set<String> REQUIRED_PROPERTIES_BMS = Collections.unmodifiableSet(
+            Stream.of(PROPERTY_HW_REVISION, PROPERTY_PROD_DATE, PROPERTY_DS18B20).collect(Collectors.toSet()));
 
     private final Logger logger = LoggerFactory.getLogger(AdvancedMultisensorThingHandler.class);
 
     private final ThingTypeUID thingType = this.thing.getThingTypeUID();
     private int hwRevision = 0;
-    private OwSensorType sensorType = OwSensorType.UNKNOWN;
 
     private int digitalRefreshInterval = 10 * 1000;
     private long digitalLastRefresh = 0;
 
     public AdvancedMultisensorThingHandler(Thing thing,
             OwDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing, dynamicStateDescriptionProvider);
+        super(thing, dynamicStateDescriptionProvider, SUPPORTED_SENSOR_TYPES,
+                getRequiredProperties(thing.getThingTypeUID()));
     }
 
     @Override
@@ -79,9 +90,7 @@ public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
             return;
         }
 
-        if (getThing().getStatus() == ThingStatus.OFFLINE) {
-            return;
-        }
+        hwRevision = Integer.valueOf(properties.get(PROPERTY_HW_REVISION));
 
         if (configuration.containsKey(CONFIG_DIGITALREFRESH)) {
             digitalRefreshInterval = ((BigDecimal) configuration.get(CONFIG_DIGITALREFRESH)).intValue() * 1000;
@@ -90,23 +99,11 @@ public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
         }
         digitalLastRefresh = 0;
 
-        if (!properties.containsKey(PROPERTY_MODELID) || !properties.containsKey(PROPERTY_PROD_DATE)
-                || !properties.containsKey(PROPERTY_HW_REVISION)) {
-            updateSensorProperties();
-            return;
-        } else {
-            sensorType = OwSensorType.valueOf(properties.get(PROPERTY_MODELID));
-            hwRevision = Integer.valueOf(properties.get(PROPERTY_HW_REVISION));
-        }
-
-        // add sensors
-
-        sensors.add(new DS2438(sensorIds.get(0), this));
-        sensors.add(new DS18x20(sensorIds.get(1), this));
-
+        sensors.add(new DS2438(sensorId, this));
+        sensors.add(new DS18x20(new SensorId(properties.get(PROPERTY_DS18B20)), this));
         if (THING_TYPE_AMS.equals(thingType)) {
-            sensors.add(new DS2438(sensorIds.get(2), this));
-            sensors.add(new DS2406_DS2413(sensorIds.get(3), this));
+            sensors.add(new DS2438(new SensorId(properties.get(PROPERTY_DS2438)), this));
+            sensors.add(new DS2406_DS2413(new SensorId(properties.get(PROPERTY_DS2413)), this));
         }
 
         scheduler.execute(() -> {
@@ -141,11 +138,11 @@ public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
                 lastRefresh = now;
 
                 if (thingType.equals(THING_TYPE_AMS)) {
-                    for (int i = 0; i < sensorCount - 1; i++) {
+                    for (int i = 0; i < sensors.size() - 1; i++) {
                         sensors.get(i).refresh(bridgeHandler, forcedRefresh);
                     }
                 } else {
-                    for (int i = 0; i < sensorCount; i++) {
+                    for (int i = 0; i < sensors.size(); i++) {
                         sensors.get(i).refresh(bridgeHandler, forcedRefresh);
                     }
                 }
@@ -156,72 +153,42 @@ public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
         }
     }
 
-    private boolean configureSupplyVoltageChannel(ThingBuilder thingBuilder) {
-        Channel supplyVoltageChannel = thing.getChannel(CHANNEL_SUPPLYVOLTAGE);
-
-        // not present in DS1923
-        if (sensorType == OwSensorType.DS1923) {
-            if (supplyVoltageChannel != null) {
-                thingBuilder.withoutChannel(supplyVoltageChannel.getUID());
-                return true;
-            }
-        } else if (supplyVoltageChannel == null) {
-            thingBuilder.withChannel(ChannelBuilder
-                    .create(new ChannelUID(getThing().getUID(), CHANNEL_SUPPLYVOLTAGE), "Number:ElectricPotential")
-                    .withLabel("Supply Voltage").withType(new ChannelTypeUID(BINDING_ID, "voltage")).build());
-            sensors.get(0).enableChannel(CHANNEL_SUPPLYVOLTAGE);
-            return true;
-        }
-        return false;
-    }
-
     private void configureThingChannels() {
         Configuration configuration = getConfig();
         ThingBuilder thingBuilder = editThing();
-        boolean isEdited = false;
 
         // temperature channel
-        Channel temperatureChannel = thing.getChannel(CHANNEL_TEMPERATURE);
-        if (temperatureChannel == null) {
-            // this is strange - there should always be to be a temperature channel
-            temperatureChannel = Util.buildTemperatureChannel(thing.getUID(), CHANNEL_TYPE_UID_TEMPERATURE,
-                    new Configuration());
-            thingBuilder.withChannel(temperatureChannel);
-            isEdited = true;
+        Channel temperatureChannel = addChannelIfMissing(thingBuilder, CHANNEL_TEMPERATURE,
+                CHANNEL_TYPE_UID_TEMPERATURE);
+        if (configuration.containsKey(CONFIG_TEMPERATURESENSOR)
+                && configuration.get(CONFIG_TEMPERATURESENSOR).equals("DS18B20")) {
+            // use DS18B20 for temperature
+            if (!CHANNEL_TYPE_UID_TEMPERATURE_POR_RES.equals(temperatureChannel.getChannelTypeUID())) {
+                removeChannelIfExisting(thingBuilder, CHANNEL_TEMPERATURE);
+                addChannelIfMissing(thingBuilder, CHANNEL_TEMPERATURE, CHANNEL_TYPE_UID_TEMPERATURE_POR_RES,
+                        temperatureChannel.getConfiguration());
+            }
+            sensors.get(1).enableChannel(CHANNEL_TEMPERATURE);
+        } else {
+            // use standard temperature channel
+            if (!CHANNEL_TYPE_UID_TEMPERATURE.equals(temperatureChannel.getChannelTypeUID())) {
+                removeChannelIfExisting(thingBuilder, CHANNEL_TEMPERATURE);
+                addChannelIfMissing(thingBuilder, CHANNEL_TEMPERATURE, CHANNEL_TYPE_UID_TEMPERATURE,
+                        temperatureChannel.getConfiguration());
+            }
+            sensors.get(0).enableChannel(CHANNEL_TEMPERATURE);
         }
 
         // always use HIH-4000 on ElabNet sensors.
         Channel humidityChannel = thing.getChannel(CHANNEL_HUMIDITY);
         if (humidityChannel != null && !humidityChannel.getConfiguration().containsKey(CONFIG_HUMIDITY)) {
-            thingBuilder.withoutChannel(humidityChannel.getUID());
-            thingBuilder.withChannel(ChannelBuilder.create(humidityChannel.getUID(), "Number:Dimensionless")
-                    .withLabel("Humidity").withType(new ChannelTypeUID(BINDING_ID, "humidity"))
-                    .withConfiguration(new Configuration(new HashMap<String, Object>() {
+            removeChannelIfExisting(thingBuilder, CHANNEL_HUMIDITY);
+            addChannelIfMissing(thingBuilder, CHANNEL_HUMIDITY, CHANNEL_TYPE_UID_HUMIDITY,
+                    new Configuration(new HashMap<String, Object>() {
                         {
                             put(CONFIG_HUMIDITY, "/HIH4000/humidity");
                         }
-                    })).build());
-        }
-
-        if (configuration.containsKey(CONFIG_TEMPERATURESENSOR)
-                && configuration.get(CONFIG_TEMPERATURESENSOR).equals("DS18B20")) {
-            // use DS18B20 for temperature
-            sensors.get(1).enableChannel(CHANNEL_TEMPERATURE);
-            if (!CHANNEL_TYPE_UID_TEMPERATURE_POR_RES.equals(temperatureChannel.getChannelTypeUID())) {
-                thingBuilder.withoutChannel(temperatureChannel.getUID());
-                thingBuilder.withChannel(Util.buildTemperatureChannel(thing.getUID(),
-                        CHANNEL_TYPE_UID_TEMPERATURE_POR_RES, temperatureChannel.getConfiguration()));
-                isEdited = true;
-            }
-        } else {
-            // use standard temperature channel
-            sensors.get(0).enableChannel(CHANNEL_TEMPERATURE);
-            if (!CHANNEL_TYPE_UID_TEMPERATURE.equals(temperatureChannel.getChannelTypeUID())) {
-                thingBuilder.withoutChannel(temperatureChannel.getUID());
-                thingBuilder.withChannel(Util.buildTemperatureChannel(thing.getUID(), CHANNEL_TYPE_UID_TEMPERATURE,
-                        temperatureChannel.getConfiguration()));
-                isEdited = true;
-            }
+                    }));
         }
 
         // standard channels on all AMS/BMS
@@ -232,34 +199,18 @@ public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
 
         // light/current sensor
         if (configuration.containsKey(CONFIG_LIGHTSENSOR) && ((Boolean) configuration.get(CONFIG_LIGHTSENSOR))) {
+            removeChannelIfExisting(thingBuilder, CHANNEL_CURRENT);
+            addChannelIfMissing(thingBuilder, CHANNEL_LIGHT, CHANNEL_TYPE_UID_LIGHT);
             sensors.get(0).enableChannel(CHANNEL_LIGHT);
-            if (thing.getChannel(CHANNEL_CURRENT) != null) {
-                thingBuilder.withoutChannel(new ChannelUID(getThing().getUID(), CHANNEL_CURRENT));
-                isEdited = true;
-            }
-            if (thing.getChannel(CHANNEL_LIGHT) == null) {
-                thingBuilder.withChannel(
-                        ChannelBuilder.create(new ChannelUID(getThing().getUID(), CHANNEL_LIGHT), "Number:Illuminance")
-                                .withLabel("Light").withType(new ChannelTypeUID(BINDING_ID, "light")).build());
-                isEdited = true;
-            }
             if (hwRevision <= 13) {
                 ((DS2438) sensors.get(0)).setLightSensorType(LightSensorType.ELABNET_V1);
             } else {
                 ((DS2438) sensors.get(0)).setLightSensorType(LightSensorType.ELABNET_V2);
             }
         } else {
+            removeChannelIfExisting(thingBuilder, CHANNEL_LIGHT);
+            addChannelIfMissing(thingBuilder, CHANNEL_CURRENT, CHANNEL_TYPE_UID_CURRENT);
             sensors.get(0).enableChannel(CHANNEL_CURRENT);
-            if (thing.getChannel(CHANNEL_LIGHT) != null) {
-                thingBuilder.withoutChannel(new ChannelUID(getThing().getUID(), CHANNEL_LIGHT));
-                isEdited = true;
-            }
-            if (thing.getChannel(CHANNEL_CURRENT) == null) {
-                thingBuilder.withChannel(
-                        ChannelBuilder.create(new ChannelUID(getThing().getUID(), CHANNEL_CURRENT), "Number:Current")
-                                .withLabel("Current").withType(new ChannelTypeUID(BINDING_ID, "current")).build());
-                isEdited = true;
-            }
         }
 
         // additional sensors on AMS
@@ -274,12 +225,10 @@ public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
             }
         }
 
-        if (isEdited) {
-            updateThing(thingBuilder.build());
-        }
+        updateThing(thingBuilder.build());
 
         try {
-            for (int i = 0; i < sensorCount; i++) {
+            for (int i = 0; i < sensors.size(); i++) {
                 sensors.get(i).configureChannels();
             }
         } catch (OwException e) {
@@ -294,17 +243,51 @@ public class AdvancedMultisensorThingHandler extends OwBaseThingHandler {
     @Override
     public Map<String, String> updateSensorProperties(OwBaseBridgeHandler bridgeHandler) throws OwException {
         Map<String, String> properties = new HashMap<String, String>();
-        OwPageBuffer pages = bridgeHandler.readPages(sensorIds.get(0));
-        DS2438Configuration ds2438configuration = new DS2438Configuration(pages);
+        DS2438Configuration ds2438configuration = new DS2438Configuration(bridgeHandler, sensorId);
 
         sensorType = DS2438Configuration.getMultisensorType(ds2438configuration.getSensorSubType(),
                 ds2438configuration.getAssociatedSensorTypes());
+
         properties.put(PROPERTY_MODELID, sensorType.toString());
         properties.put(PROPERTY_VENDOR, ds2438configuration.getVendor());
 
         properties.put(PROPERTY_PROD_DATE, ds2438configuration.getProductionDate());
         properties.put(PROPERTY_HW_REVISION, ds2438configuration.getHardwareRevision());
 
+        switch (sensorType) {
+            case BMS:
+            case BMS_S:
+                properties.put(PROPERTY_DS18B20,
+                        ds2438configuration.getAssociatedSensorIds(OwSensorType.DS18B20).get(0).getFullPath());
+                break;
+            case AMS:
+            case AMS_S:
+                properties.put(PROPERTY_DS18B20,
+                        ds2438configuration.getAssociatedSensorIds(OwSensorType.DS18B20).get(0).getFullPath());
+                properties.put(PROPERTY_DS2413,
+                        ds2438configuration.getAssociatedSensorIds(OwSensorType.DS2413).get(0).getFullPath());
+                properties.put(PROPERTY_DS2438,
+                        ds2438configuration.getAssociatedSensorIds(OwSensorType.MS_TV).get(0).getFullPath());
+
+                break;
+            default:
+                throw new OwException("sensorType " + sensorType.toString() + " not supported by this thing handler");
+        }
+
         return properties;
+    }
+
+    /**
+     * used to determine the correct set of required properties
+     *
+     * @param thingType
+     * @return
+     */
+    private static Set<String> getRequiredProperties(ThingTypeUID thingType) {
+        if (THING_TYPE_AMS.equals(thingType)) {
+            return REQUIRED_PROPERTIES_AMS;
+        } else {
+            return REQUIRED_PROPERTIES_BMS;
+        }
     }
 }

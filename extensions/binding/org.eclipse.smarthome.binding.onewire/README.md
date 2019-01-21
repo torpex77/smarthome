@@ -53,6 +53,7 @@ Bridges of type `owserver` are extensible with channels of type `owfs-number` an
 
 The counter thing supports the DS2423 chip, a dual counter.
 Two `counterX` channels are supported. 
+`X` is either `0` or `1`.
 
 It has two parameters: sensor id `id` and refresh time `refresh`.
  
@@ -61,6 +62,7 @@ It has two parameters: sensor id `id` and refresh time `refresh`.
 
 The digital I/O things support the DS2405, DS2406, DS2408 and DS2413 chips.
 Depending on the chip, one (DS2405), two (DS2406/DS2413) or eight (DS2408) `digitalX`  channels are supported.
+`X` is a number from `0` to `7`.
 
 It has two parameters: sensor id `id` and refresh time `refresh`.
 
@@ -82,6 +84,11 @@ If the voltage input of the DS2438 is connected to a humidity sensor, several co
 
 It has two parameters: sensor id `id` and refresh time `refresh`.
 
+Known DS2438-base sensors are iButtonLink (https://www.ibuttonlink.com/) MS-T (recognized as generic DS2438), MS-TH, MS-TC, MS-TL, MS-TV.
+Unknown multisensors are added as generic DS2438 and have `temperature`, `current`, `voltage` and `supplyvoltage` channels.
+
+In case the sensor is not properly detected (e.g. because it is a self-made sensor), check if it is compatible with one of the sensors listed above. If so, the first byte of page 3 of the DS2438 needs to be set to the correct identification (0x00 = generic/MS-T, 0x19 = MS-TH, 0x1A = MS-TV, 0x1B = MS-TL, 0x1C = MS-TC). **Note: Updating the pages of a sensor can break other software. This is fully your own risk.** 
+
 ### Temperature sensor (`temperature`)
 
 The temperature thing supports DS18S20, DS18B20 and DS1822 sensors.
@@ -100,9 +107,8 @@ These sensors provide `temperature`, `humidity` and `supplyvoltage` channels.
 If the light sensor is attached and configured, a `light` channel is provided, otherwise a `current` channel.
 The AMS has an additional `voltage`and two `digitalX` channels.
 
-It has two (`bms`) or four (`ams`) sensor ids (`id`, `id1`, `id2`, `id3`).
-The first id is always the main DS2438, the second id the DS18B20 temperature sensor.
-In the case of the AMS, the third sensor id has to be the second DS2438 and the fourth the DS2413.
+It has two (`bms`) or four (`ams`) sensors.
+The id parameter (`id`) has to be configured with the sensor id of the humidity sensor.
 
 Additionally the refresh time `refresh` can be configured.
 The AMS supports a `digitalrefresh` parameter for the refresh time of the digital channels.
@@ -197,7 +203,10 @@ For best performance it is recommended to set the resolution only as high as nee
  
 ## Full Example
 
-This is the configuration for a OneWire network consisting of an owserver as bridge (`onewire:owserver:mybridge`) as well as a temperature sensor and a BMS as things (`onewire:temperature:mybridge:mysensor`, `onewire:bms:mybridge:mybms`). 
+** Attention: Adding channels with UIDs different from the ones mentioned in the thing description will not work and may cause problems.
+Please use the pre-defined channel names only. **
+
+This is the configuration for a OneWire network consisting of an owserver as bridge (`onewire:owserver:mybridge`) as well as a temperature sensor, a BMS and a 2-port Digital I/O as things (`onewire:temperature:mybridge:mysensor`, `onewire:bms:mybridge:mybms`, `onewire:digitalio2:mybridge:mydio`). 
 
 ### demo.things:
 
@@ -217,11 +226,10 @@ Bridge onewire:owserver:mybridge [
         } 
     
     Thing bms mybms [
-        id="26.CD497C010000", 
-        id1="28.D3E45A040000", 
+        id="26.CD497C010000",
+        refresh=60, 
         lightsensor=true, 
         temperaturesensor="DS18B20", 
-        refresh=60
         ] {
             Channels:
                 Type temperature-por-res : temperature [
@@ -229,6 +237,18 @@ Bridge onewire:owserver:mybridge [
                 ]
         } 
 
+    Thing digitalio2 mydio [
+        id="3A.134E47DB60000"
+        ] {
+            Channels:
+                Type dio : digital0 [
+                    mode="input"
+                ]
+                Type dio : digital1 [
+                    mode="output"
+                ]
+        }
+        
     Channels:
         Type owfs-number : crc8errors [
             path="statistics/errors/CRC8_errors"
@@ -239,10 +259,12 @@ Bridge onewire:owserver:mybridge [
 ### demo.items:
 
 ```
-Number:Temperature MySensor "MySensor [%.1f %unit%]" { channel="onewire:temperature:mybridge:mysensor:temperature" }
-Number:Temperature MyBMS_T "MyBMS Temperature [%.1f %unit%]" { channel="onewire:bms:mybridge:mybms:temperature" }
-Number:Dimensionless MyBMS_H "MyBMS Humidity [%.1f %unit%]"  { channel="onewire:bms:mybridge:mybms:humidity" }
-Number  CRC8Errors "Bus-Errors [%d]" { channel="onewire:owserver:mybridge:crc8errors" }
+Number:Temperature      MySensor    "MySensor [%.1f °C]"            { channel="onewire:temperature:mybridge:mysensor:temperature" }
+Number:Temperature      MyBMS_T     "MyBMS Temperature [%.1f °F]"   { channel="onewire:bms:mybridge:mybms:temperature" }
+Number:Dimensionless    MyBMS_H     "MyBMS Humidity [%.1f %unit%]"  { channel="onewire:bms:mybridge:mybms:humidity" }
+Switch                  Digital0    "Digital 0"                     { channel="onewire:digitalio2:mybridge:mydio:digital0" }
+Switch                  Digital1    "Digital 1"                     { channel="onewire:digitalio2:mybridge:mydio:digital1" }
+Number                  CRC8Errors  "Bus-Errors [%d]"               { channel="onewire:owserver:mybridge:crc8errors" }
 ```
 
 ### demo.sitemap:
@@ -255,6 +277,8 @@ sitemap demo label="Main Menu"
         Text item=MyBMS_T
         Text item=MyBMS_H
         Text item=CRC8Errors
+        Text item=Digital0
+        Switch item=Digital1
     }
 }
 ```

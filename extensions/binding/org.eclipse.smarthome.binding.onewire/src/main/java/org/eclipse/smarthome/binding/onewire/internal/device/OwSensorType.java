@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -33,8 +33,6 @@ public enum OwSensorType {
     DS2423,
     DS2431,
     DS2438,
-    DS2450,
-    MS_T,
     MS_TC,
     MS_TH,
     MS_TL,

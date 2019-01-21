@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -28,14 +28,11 @@ import org.eclipse.smarthome.binding.onewire.internal.OwException;
 import org.eclipse.smarthome.binding.onewire.internal.OwPageBuffer;
 import org.eclipse.smarthome.binding.onewire.internal.device.EDS006x;
 import org.eclipse.smarthome.binding.onewire.internal.device.OwSensorType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
 import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,41 +45,27 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class EDSSensorThingHandler extends OwBaseThingHandler {
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Collections.singleton(THING_TYPE_EDS_ENV);
-    private static final Set<OwSensorType> SUPPORTED_SENSOR_TYPES = Collections
+    public static final Set<OwSensorType> SUPPORTED_SENSOR_TYPES = Collections
             .unmodifiableSet(Stream.of(OwSensorType.EDS0064, OwSensorType.EDS0065, OwSensorType.EDS0066,
                     OwSensorType.EDS0067, OwSensorType.EDS0068).collect(Collectors.toSet()));
+    private static final Set<String> REQUIRED_PROPERTIES = Collections.singleton(PROPERTY_HW_REVISION);
 
     private final Logger logger = LoggerFactory.getLogger(EDSSensorThingHandler.class);
 
-    private OwSensorType sensorType = OwSensorType.UNKNOWN;
-
     public EDSSensorThingHandler(Thing thing, OwDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing, dynamicStateDescriptionProvider);
+        super(thing, dynamicStateDescriptionProvider, SUPPORTED_SENSOR_TYPES, REQUIRED_PROPERTIES);
     }
 
     @Override
     public void initialize() {
-        Map<String, String> properties = editProperties();
-
         if (!super.configure()) {
             return;
         }
 
-        if (getThing().getStatus() == ThingStatus.OFFLINE) {
-            return;
-        }
-
         // add sensors
-        sensors.add(new EDS006x(sensorIds.get(0), this));
+        sensors.add(new EDS006x(sensorId, this));
 
-        // check sensors
-        if (!properties.containsKey(PROPERTY_MODELID)) {
-            updateSensorProperties();
-            return;
-        } else {
-            sensorType = OwSensorType.valueOf(properties.get(PROPERTY_MODELID));
-            ((EDS006x) sensors.get(0)).configureChannels(sensorType);
-        }
+        ((EDS006x) sensors.get(0)).configureChannels(sensorType);
 
         scheduler.execute(() -> {
             configureThingChannels();
@@ -134,58 +117,27 @@ public class EDSSensorThingHandler extends OwBaseThingHandler {
 
         // humidity sensor
         if ((sensorType == OwSensorType.EDS0065) || (sensorType == OwSensorType.EDS0068)) {
-            if (thing.getChannel(CHANNEL_HUMIDITY) == null) {
-                thingBuilder.withChannel(ChannelBuilder
-                        .create(new ChannelUID(getThing().getUID(), CHANNEL_HUMIDITY), "Number:Dimensionless")
-                        .withLabel("Humidity").withType(new ChannelTypeUID(BINDING_ID, "humidity")).build());
-            }
-            if (thing.getChannel(CHANNEL_DEWPOINT) == null) {
-                thingBuilder.withChannel(ChannelBuilder
-                        .create(new ChannelUID(getThing().getUID(), CHANNEL_DEWPOINT), "Number:Temperature")
-                        .withLabel("Dewpoint").withType(new ChannelTypeUID(BINDING_ID, "dewpoint")).build());
-            }
-            if (thing.getChannel(CHANNEL_ABSOLUTE_HUMIDITY) == null) {
-                thingBuilder.withChannel(ChannelBuilder
-                        .create(new ChannelUID(getThing().getUID(), CHANNEL_ABSOLUTE_HUMIDITY), "Number:Density")
-                        .withLabel("Abs. Humidity").withType(new ChannelTypeUID(BINDING_ID, "absolutehumidity"))
-                        .build());
-            }
+            addChannelIfMissing(thingBuilder, CHANNEL_HUMIDITY, CHANNEL_TYPE_UID_HUMIDITY);
+            addChannelIfMissing(thingBuilder, CHANNEL_ABSOLUTE_HUMIDITY, CHANNEL_TYPE_UID_ABSHUMIDITY);
+            addChannelIfMissing(thingBuilder, CHANNEL_DEWPOINT, CHANNEL_TYPE_UID_DEWPOINT);
         } else {
-            if (thing.getChannel(CHANNEL_HUMIDITY) != null) {
-                thingBuilder.withoutChannel(new ChannelUID(getThing().getUID(), CHANNEL_HUMIDITY));
-            }
-            if (thing.getChannel(CHANNEL_DEWPOINT) != null) {
-                thingBuilder.withoutChannel(new ChannelUID(getThing().getUID(), CHANNEL_DEWPOINT));
-            }
-            if (thing.getChannel(CHANNEL_ABSOLUTE_HUMIDITY) != null) {
-                thingBuilder.withoutChannel(new ChannelUID(getThing().getUID(), CHANNEL_ABSOLUTE_HUMIDITY));
-            }
+            removeChannelIfExisting(thingBuilder, CHANNEL_HUMIDITY);
+            removeChannelIfExisting(thingBuilder, CHANNEL_DEWPOINT);
+            removeChannelIfExisting(thingBuilder, CHANNEL_ABSOLUTE_HUMIDITY);
         }
 
         // pressure sensor
         if ((sensorType == OwSensorType.EDS0066) || (sensorType == OwSensorType.EDS0068)) {
-            if (thing.getChannel(CHANNEL_PRESSURE) == null) {
-                thingBuilder.withChannel(
-                        ChannelBuilder.create(new ChannelUID(getThing().getUID(), CHANNEL_PRESSURE), "Number:Pressure")
-                                .withLabel("Pressure").withType(new ChannelTypeUID(BINDING_ID, "pressure")).build());
-            }
+            addChannelIfMissing(thingBuilder, CHANNEL_PRESSURE, CHANNEL_TYPE_UID_PRESSURE);
         } else {
-            if (thing.getChannel(CHANNEL_PRESSURE) != null) {
-                thingBuilder.withoutChannel(new ChannelUID(getThing().getUID(), CHANNEL_PRESSURE));
-            }
+            removeChannelIfExisting(thingBuilder, CHANNEL_PRESSURE);
         }
 
         // light sensor
         if ((sensorType == OwSensorType.EDS0067) || (sensorType == OwSensorType.EDS0068)) {
-            if (thing.getChannel(CHANNEL_LIGHT) == null) {
-                thingBuilder.withChannel(
-                        ChannelBuilder.create(new ChannelUID(getThing().getUID(), CHANNEL_LIGHT), "Number:Illuminance")
-                                .withLabel("Illuminance").withType(new ChannelTypeUID(BINDING_ID, "light")).build());
-            }
+            addChannelIfMissing(thingBuilder, CHANNEL_LIGHT, CHANNEL_TYPE_UID_LIGHT);
         } else {
-            if (thing.getChannel(CHANNEL_LIGHT) != null) {
-                thingBuilder.withoutChannel(new ChannelUID(getThing().getUID(), CHANNEL_LIGHT));
-            }
+            removeChannelIfExisting(thingBuilder, CHANNEL_LIGHT);
         }
 
         updateThing(thingBuilder.build());
@@ -198,7 +150,7 @@ public class EDSSensorThingHandler extends OwBaseThingHandler {
     public Map<String, String> updateSensorProperties(OwBaseBridgeHandler bridgeHandler) throws OwException {
         Map<String, String> properties = new HashMap<String, String>();
 
-        OwPageBuffer pages = bridgeHandler.readPages(sensorIds.get(0));
+        OwPageBuffer pages = bridgeHandler.readPages(sensorId);
 
         OwSensorType sensorType = OwSensorType.UNKNOWN;
         try {

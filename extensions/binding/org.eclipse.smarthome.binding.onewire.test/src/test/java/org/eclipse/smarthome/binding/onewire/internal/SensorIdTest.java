@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2014,2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -12,7 +12,7 @@
  */
 package org.eclipse.smarthome.binding.onewire.internal;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import org.junit.Test;
 
@@ -60,6 +60,16 @@ public class SensorIdTest {
         assertEquals("/1F.0123456789ab/aux/28.0123456789ab", sensorId.getFullPath());
         assertEquals("28.0123456789ab", sensorId.getId());
         assertEquals("28", sensorId.getFamilyId());
+    }
+
+    @Test
+    public void equalsTest() {
+        SensorId sensorId1 = new SensorId("1F.0123456789ab/aux/28.0123456789ab");
+        SensorId sensorId2 = new SensorId("1F.0123456789ab/aux/28.0123456789ab");
+        SensorId sensorId3 = new SensorId("1F.0123456789ab/aux/28.0123456789ac");
+
+        assertTrue(sensorId1.equals(sensorId2));
+        assertFalse(sensorId1.equals(sensorId3));
     }
 
 }
