@@ -208,6 +208,7 @@
     <feature dependency="true">esh-automation-api</feature>
     <feature dependency="true">esh-automation-core</feature>
     <feature dependency="true">esh-automation-module-script</feature>
+    <feature dependency="true">esh-model-script</feature>
     <bundle>mvn:org.eclipse.smarthome.automation/org.eclipse.smarthome.automation.module.script.rulesupport/${project.version}</bundle>
   </feature>
 

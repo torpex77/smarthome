@@ -13,7 +13,9 @@ Export-Package:
  org.eclipse.smarthome.automation.module.script.rulesupport.shared.facto
  ries,
  org.eclipse.smarthome.automation.module.script.rulesupport.shared.simpl
- e
+ e,
+ org.eclipse.smarthome.automation.module.script.rulesupport.shared.simpl
+ e.helper
 Import-Package: 
  org.eclipse.jdt.annotation;resolution:=optional,
  org.eclipse.smarthome.automation,
@@ -23,6 +25,7 @@ Import-Package:
  org.eclipse.smarthome.automation.module.script.rulesupport.shared,
  org.eclipse.smarthome.automation.module.script.rulesupport.shared.factories,
  org.eclipse.smarthome.automation.module.script.rulesupport.shared.simple,
+ org.eclipse.smarthome.automation.module.script.rulesupport.shared.simple.helper,
  org.eclipse.smarthome.automation.parser,
  org.eclipse.smarthome.automation.template,
  org.eclipse.smarthome.automation.type,
@@ -36,7 +39,13 @@ Import-Package:
  org.eclipse.smarthome.core.scheduler,
  org.eclipse.smarthome.core.service,
  org.eclipse.smarthome.core.thing,
+ org.eclipse.smarthome.core.thing.events,
  org.eclipse.smarthome.core.types,
+ org.eclipse.smarthome.model.script,
+ org.eclipse.smarthome.model.script.actions,
+ org.eclipse.smarthome.model.script.engine.action,
+ org.joda.time,
+ org.joda.time.format,
  org.osgi.framework,
  org.osgi.service.cm,
  org.osgi.service.component,

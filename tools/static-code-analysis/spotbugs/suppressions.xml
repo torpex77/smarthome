@@ -29,10 +29,9 @@
     <Class name="org.eclipse.smarthome.model.script.actions.LogAction"/>
     <Bug pattern="SLF4J_FORMAT_SHOULD_BE_CONST"/>
   </Match>
+  <!-- Has pass-through method to logger so has to pass variable not constant -->
   <Match>
-    <Bug pattern="SLF4J_UNKNOWN_ARRAY"/>
-  </Match>
-  <Match>
-    <Bug pattern="SLF4J_SIGN_ONLY_FORMAT"/>
+    <Class name="org.eclipse.smarthome.automation.module.script.rulesupport.shared.simple.helper.BaseRule"/>
+    <Bug pattern="SLF4J_FORMAT_SHOULD_BE_CONST"/>
   </Match>
 </FindBugsFilter>
